@@ -64,8 +64,8 @@ a_gt = 0.2
 b_gt = 0.7
 c_gt = torch.randn(num_terms, 1, 1) * 0.2
 c_gt[1, 0, 0] += 1
-noise_level_gt = 0
-feedback_gt = predict_feedback(phase1, phase2, a_gt, b_gt, c_gt, N, noise_level_gt)
+noise_level_synth = 0.1
+feedback_synth = predict_feedback(phase1, phase2, a_gt, b_gt, c_gt, N, noise_level_synth)
 
 # Create init prediction
 num_terms = 5
@@ -74,7 +74,7 @@ b = torch.tensor(1.0, requires_grad=True)
 c = torch.zeros(num_terms, 1, 1)
 c[1, 0, 0] += 1
 c.requires_grad = True
-noise_level = 0.15
+noise_level = 0.0
 
 
 # Initialize parameters and optimizer
@@ -89,7 +89,7 @@ progress_bar = tqdm(total=iterations)
 for it in range(iterations):
     feedback = predict_feedback(phase1, phase2, a, b, c, N, noise_level)
 
-    error = (feedback_gt - feedback).abs().pow(2).sum()
+    error = (feedback_synth - feedback).abs().pow(2).sum()
 
     # Gradient descent step
     error.backward()
@@ -106,6 +106,10 @@ for it in range(iterations):
 
 plt.cla()
 plot_phase_curve(c_gt, c)
+
+plt.figure()
+# plt.plot(feedback.T.detach())
+plt.imshow(feedback_synth.detach())
 plt.show()
 
 print(f'a_gt: {a_gt}')
