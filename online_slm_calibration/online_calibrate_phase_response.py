@@ -1,9 +1,15 @@
+# External 3rd party
 import numpy as np
 import torch
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import h5py
 
+# External ours
 from openwfs.algorithms.troubleshoot import field_correlation
+
+# Internal
+from helper_functions import get_dict_from_hdf5
 
 
 def phase_correlation(phase1, phase2):
@@ -33,10 +39,10 @@ def predict_feedback(phase_in1, phase_in2, a, b, c, N, noise_level):
     return feedback
 
 
-def plot_phase_curve(c_gt, c):
+def plot_phase_curve(c_gt, c_pred):
     phase_in = torch.linspace(0, 2 * np.pi, 100)
     phase_curve_gt = phase_response(phase_in, c_gt).squeeze()
-    phase_curve_pred = phase_response(phase_in, c.detach()).squeeze()
+    phase_curve_pred = phase_response(phase_in, c_pred.detach()).squeeze()
 
     phase_corr = phase_correlation(phase_curve_gt, phase_curve_pred)
 
@@ -49,72 +55,95 @@ def plot_phase_curve(c_gt, c):
     plt.legend()
 
 
-do_plot = False
+def plot_feedback_fit(feedback_meas, feedback, phase1, phase2):
+    plt.subplot(1, 3, 2)
+    extent = (phase2.min(), phase2.max(), phase1.min(), phase1.max())
+    plt.imshow(feedback_meas.squeeze().detach(), extent=extent, interpolation='nearest')
+    plt.title('Synth feedback')
 
-# Define 'measured' phases
-P1 = 24
-P2 = 12
-phase1 = 2*np.pi/P1 * torch.arange(P1).view(1, 1, -1)
-phase2 = 2*np.pi/P2 * torch.arange(P2).view(1, -1, 1)
+    plt.subplot(1, 3, 3)
+    plt.imshow(feedback.squeeze().detach(), extent=extent, interpolation='nearest')
+    plt.title('Predicted feedback')
+
+
+do_plot = True
+plot_per_its = 10
+
+gv_slice = slice(120, 220)
+
+
+def read_file_to_tensor(file_path):
+    with open(file_path, 'r') as file:
+        numbers = [float(line.strip()) for line in file.readlines()]
+    return torch.tensor(numbers)
+
+filepath_lut = '/home/dani/LocalData/2023_08_inline_slm_calibration/LUT Files/corrected_2022_08_26 10-47-28.blt'
+lut_correct = read_file_to_tensor(filepath_lut) / 8
+plt.plot(lut_correct)
+plt.show()
+
+
+# Read inline data
+filepath = '/home/dani/LocalData/harish_signal_feedback.mat'
+
+with h5py.File(filepath, "r") as f:
+    file_dict = get_dict_from_hdf5(f)
+
+feedback_meas = torch.tensor(file_dict['feedback']).unsqueeze(0)
+P1 = feedback_meas.shape[1]
+P2 = feedback_meas.shape[2]
+phase1 = 2*np.pi/256 * torch.tensor(file_dict['gv_row']).view(1, -1, 1)
+phase2 = 2*np.pi/256 * torch.tensor(file_dict['gv_col']).view(1, 1, -1)
 N = 2
 
-# Create synthetic measurement
-num_terms = 5
-a_gt = 0.2
-b_gt = 0.7
-c_gt = torch.randn(num_terms, 1, 1) * 0.2
-c_gt[1, 0, 0] += 1
-noise_level_synth = 0.1
-feedback_synth = predict_feedback(phase1, phase2, a_gt, b_gt, c_gt, N, noise_level_synth)
-
 # Create init prediction
-num_terms = 5
+num_terms = 6
 a = torch.tensor(0.0, requires_grad=True)
 b = torch.tensor(1.0, requires_grad=True)
 c = torch.zeros(num_terms, 1, 1)
-c[1, 0, 0] += 1
+c[1, 0, 0] = 2.0
 c.requires_grad = True
 noise_level = 0.0
 
 
 # Initialize parameters and optimizer
-learning_rate = 2e-3
+learning_rate = 1e-3
 params = [{'lr': learning_rate, 'params': [a, b, c]}]
 optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
 
-iterations = 1000
+iterations = 2000
 progress_bar = tqdm(total=iterations)
+
+if do_plot:
+    plt.figure(figsize=(12, 4))
 
 for it in range(iterations):
     feedback = predict_feedback(phase1, phase2, a, b, c, N, noise_level)
 
-    error = (feedback_synth - feedback).abs().pow(2).sum()
+    error = (feedback_meas - feedback).abs().pow(2).sum()
 
     # Gradient descent step
     error.backward()
     optimizer.step()
     optimizer.zero_grad()
 
-    if do_plot:
-        plt.cla()
-        plot_phase_curve(c_gt, c)
+    if do_plot and it % plot_per_its == 0:
+        plt.clf()
+        plt.subplot(1, 3, 1)
+        plot_phase_curve(c.detach(), c)
+        plot_feedback_fit(feedback_meas, feedback, phase1, phase2)
         plt.pause(0.01)
 
     progress_bar.update()
 
 
-plt.cla()
-plot_phase_curve(c_gt, c)
-
-plt.figure()
-# plt.plot(feedback.T.detach())
-plt.imshow(feedback_synth.detach())
+plt.clf()
+plt.subplot(1, 3, 1)
+plot_phase_curve(c.detach(), c)
+plot_feedback_fit(feedback_meas, feedback, phase1, phase2)
 plt.show()
 
-print(f'a_gt: {a_gt}')
 print(f'a: {a}')
-print(f'b_gt: {b_gt}')
 print(f'b: {b}')
-print(f'c_gt: {c_gt}')
 print(f'c: {c}')
