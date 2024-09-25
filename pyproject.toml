@@ -12,6 +12,7 @@ matplotlib = "^3.8.3"
 numpy = "^1.26.4"
 openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "6334c635ce9425ebf0efdcb27b8f0cac6fc7afbe" }
 tqdm = "^4.66.2"
+h5py = "~3.11.0"
 
 
 [build-system]
