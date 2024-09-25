@@ -51,6 +51,8 @@ def plot_phase_curve(c_gt, c):
 
 do_plot = False
 
+
+
 # Define 'measured' phases
 P1 = 24
 P2 = 12
@@ -64,7 +66,7 @@ a_gt = 0.2
 b_gt = 0.7
 c_gt = torch.randn(num_terms, 1, 1) * 0.2
 c_gt[1, 0, 0] += 1
-noise_level_synth = 0.1
+noise_level_synth = 0.15
 feedback_synth = predict_feedback(phase1, phase2, a_gt, b_gt, c_gt, N, noise_level_synth)
 
 # Create init prediction
@@ -108,8 +110,13 @@ plt.cla()
 plot_phase_curve(c_gt, c)
 
 plt.figure()
-# plt.plot(feedback.T.detach())
+plt.subplot(1, 2, 1)
 plt.imshow(feedback_synth.detach())
+plt.title('Synth feedback')
+
+plt.subplot(1, 2, 2)
+plt.imshow(feedback.detach())
+plt.title('Predicted feedback')
 plt.show()
 
 print(f'a_gt: {a_gt}')
