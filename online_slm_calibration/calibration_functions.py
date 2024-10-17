@@ -17,17 +17,6 @@ def phase_correlation(phase1, phase2):
     return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
 
-def phase_response(input_phase, c, dim=-3):
-    """
-
-    Args:
-
-    """
-    pows = torch.arange(c.numel()).view(c.shape)
-    actual_phase = 2*np.pi * (c * (input_phase/(2*np.pi)) ** pows).sum(dim=dim)
-    return actual_phase
-
-
 def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_gv: tt, nonlinearity,
                      noise_level=0.0) -> tt:
     """
@@ -45,35 +34,19 @@ def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_
     Returns:
         Predicted
     """
-    # Set array dimensions
-    gv0 = gray_value0.view(-1, 1)
-    gv1 = gray_value1.view(1, -1)
+    # Get phases
+    phase0 = phase_response_per_gv[gray_value0].view(-1, 1)
+    phase1 = phase_response_per_gv[gray_value1].view(1, -1)
 
     # Compute phase difference and predicted clean feedback
-    phase_diff_actual = phase_response(gv1, phase_response_per_gv) - phase_response(gv0, phase_response_per_gv)
-    feedback_clean = a + b * (torch.cos(phase_diff_actual / 2) ** (2 * nonlinearity))
+    phase_diff = phase1 - phase0
+    feedback_clean = a + b * (torch.cos(phase_diff / 2) ** (2 * nonlinearity))
 
     # Add optional noise if requested
     if noise_level == 0.0:
         return feedback_clean
     else:
         return feedback_clean + noise_level * torch.randn(feedback_clean.shape)
-
-
-def plot_phase_curve(c_pred, phase, phase_lut_correct):
-    phase_in = phase.squeeze()
-    phase_curve_pred = phase_response(phase_in, c_pred.detach()).squeeze()
-
-    n = len(phase_lut_correct)
-    phase_lut_out = np.arange(0, 2*np.pi, 2*np.pi/n)
-
-    plt.plot(phase_lut_out, phase_lut_out, '--', color=(0.8, 0.8, 0.8), label='Linear')
-    plt.plot(phase_lut_correct, phase_lut_out, label='Ground truth')
-    plt.plot(phase_in, phase_curve_pred - 8, label='Prediction')
-    plt.xlabel('phase in')
-    plt.ylabel('phase actual')
-    plt.legend()
-    plt.ylim((-2*np.pi, 4*np.pi))
 
 
 def plot_feedback_fit(feedback_meas, feedback, gray_values0, gray_values1):
