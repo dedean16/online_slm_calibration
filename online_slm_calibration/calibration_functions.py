@@ -49,12 +49,12 @@ def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_
         return feedback_clean + noise_level * torch.randn(feedback_clean.shape)
 
 
-def plot_feedback_fit(feedback_meas, feedback, gray_values0, gray_values1):
+def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
     plt.subplot(1, 3, 2)
     extent = (gray_values1.min(), gray_values1.max(), gray_values0.min(), gray_values0.max())
-    vmin = feedback_meas.min()
-    vmax = feedback_meas.max()
-    plt.imshow(feedback_meas.squeeze().detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
+    vmin = feedback_measurements.min()
+    vmax = feedback_measurements.max()
+    plt.imshow(feedback_measurements.squeeze().detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title('Measured feedback')
     plt.colorbar()
 
