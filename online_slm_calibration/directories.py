@@ -1,2 +1,2 @@
-# localdata = 'C:/LocalData/phase_only_ortho'
-localdata = '/home/dani/LocalData/phase_only_ortho'
+# localdata = 'C:/LocalData/online_slm_calibration'
+localdata = '/home/dani/LocalData/online_slm_calibration'
