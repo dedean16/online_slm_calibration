@@ -96,12 +96,11 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
         init_noise_level: Standard deviation of the Gaussian noise added to the initial phase_response guess.
     Returns:
     """
-    # Create init prediction
+    # Create initial guess
     phase_response_per_gv = torch.linspace(0, 2*np.pi, 256) + torch.randn(256) * init_noise_level
     phase_response_per_gv.requires_grad = True
     a = torch.tensor(feedback_measurements.mean(), requires_grad=True)
     b = torch.tensor(3*feedback_measurements.std(), requires_grad=True)
-
 
     # Initialize parameters and optimizer
     learning_rate = 5e-2
