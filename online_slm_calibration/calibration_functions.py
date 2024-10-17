@@ -1,4 +1,5 @@
 # External 3rd party
+from torch import Tensor as tt
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -49,7 +50,6 @@ def plot_phase_curve(c_pred, phase, phase_lut_correct):
     plt.plot(phase_in, phase_curve_pred - 8, label='Prediction')
     plt.xlabel('phase in')
     plt.ylabel('phase actual')
-    plt.title(f'iter {it}')
     plt.legend()
     plt.ylim((-2*np.pi, 4*np.pi))
 
@@ -67,4 +67,21 @@ def plot_feedback_fit(feedback_meas, feedback, phase1, phase2):
     plt.imshow(feedback.squeeze().detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title('Predicted feedback')
     plt.colorbar()
+
+
+def import_lut(filepath_lut, scaling=8.0) -> tt:
+    """
+    Import blt lookup table from .blt file; a text file containing 256 gray values, corresponding to the range [0, 2π).
+
+    Args:
+        filepath_lut: Filepath to the .blt file.
+        scaling: Scaling factor w.r.t. the range [0, 255] i.e. a bit depth of 8-bit, used for the .blt file. The range
+        of the gray values is by default [0, 2047], which corresponds to a scaling of 8.0.
+
+    Returns: the lookup table as 256-element tensor.
+    """
+    with open(filepath_lut, 'r') as file:
+        numbers = [float(line.strip()) for line in file.readlines()]
+    return torch.tensor(numbers) / scaling
+
 

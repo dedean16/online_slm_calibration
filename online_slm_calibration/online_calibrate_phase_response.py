@@ -1,3 +1,6 @@
+# Built-in
+import os
+
 # External 3rd party
 import numpy as np
 import torch
@@ -10,6 +13,8 @@ from openwfs.algorithms.troubleshoot import field_correlation
 
 # Internal
 from helper_functions import get_dict_from_hdf5
+from calibration_functions import import_lut
+from directories import localdata
 
 
 # === Settings === #
@@ -18,47 +23,20 @@ plot_per_its = 100
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 num_poly_terms = 6              # Number of polynomial terms to fit
 
-gv1_slice = slice(0, 255)
-gv2_slice = slice(0, 9)
 
+filepath_lut = os.path.join(localdata, '2023_08_inline_slm_calibration/LUT Files/corrected_2022_08_26 10-47-28.blt')
+filepath_measurements = os.path.join(localdata, 'harish_signal_feedback.mat')
 
-# Read inline signal feedback data
-filepath = '/home/dani/LocalData/harish_signal_feedback.mat'
-
-with h5py.File(filepath, "r") as f:
+with h5py.File(filepath_measurements, "r") as f:
     file_dict = get_dict_from_hdf5(f)
 
-gauss_sigma = (0, 3, 0)
-feedback_meas_raw = torch.tensor(file_dict['feedback']).unsqueeze(0)
+feedback_meas = torch.tensor(file_dict['feedback']).unsqueeze(0)
+gv1 = torch.tensor(file_dict['gv_row']).view(1, -1, 1)
+gv2 = torch.tensor(file_dict['gv_col']).view(1, 1, -1)
 
-gv1_raw = torch.tensor(file_dict['gv_row']).view(1, -1, 1)
-gv2_raw = torch.tensor(file_dict['gv_col']).view(1, 1, -1)
-gv1 = gv1_raw[:, gv1_slice, :]
-gv2 = gv2_raw[:, :, gv2_slice]
-phase1 = 2*np.pi/256 * gv1
-phase2 = 2*np.pi/256 * gv2
-feedback_meas = feedback_meas_raw[:, gv1_slice, gv2_slice]
+lut_correct = import_lut(filepath_lut=filepath_lut)
 
 # Create init prediction
-a = torch.tensor(feedback_meas.mean(), requires_grad=True)
-b = torch.tensor(feedback_meas.std(), requires_grad=True)
-c = torch.zeros(num_poly_terms, 1, 1)
-c[1, 0, 0] = 2.3
-c.requires_grad = True
-noise_level = 0.0
-
-
-# Import correct LUT
-def read_file_to_tensor(file_path):
-    with open(file_path, 'r') as file:
-        numbers = [float(line.strip()) for line in file.readlines()]
-    return torch.tensor(numbers)
-
-
-filepath_lut = '/home/dani/LocalData/2023_08_inline_slm_calibration/LUT Files/corrected_2022_08_26 10-47-28.blt'
-lut_correct = read_file_to_tensor(filepath_lut) / 8
-n = len(lut_correct)
-phase_lut_correct = 2*np.pi / n * lut_correct
 
 
 # Initialize parameters and optimizer
