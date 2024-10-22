@@ -6,11 +6,11 @@ authors = ["Daniel Cox <danielcox16@hotmail.com>"]
 readme = "README.rst"
 
 [tool.poetry.dependencies]
-python = "~3.11"
-torch = "~2.3"
+python = "^3.11"
+torch = "^2.3"
+torchvision = ">0.1"
 matplotlib = "^3.8.3"
-numpy = "^1.26.4"
-openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "6334c635ce9425ebf0efdcb27b8f0cac6fc7afbe" }
+openwfs = "^1.0.0"
 tqdm = "^4.66.2"
 h5py = "~3.11.0"
 
