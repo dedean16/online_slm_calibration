@@ -58,16 +58,20 @@ def plot_phase_response(phase_response_per_gv):
 
 def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
     plt.subplot(1, 3, 2)
-    extent = (gray_values1.min(), gray_values1.max(), gray_values0.min(), gray_values0.max())
+    extent = (gray_values1.min(), gray_values1.max(), gray_values0.max(), gray_values0.min())
     vmin = torch.minimum(feedback_measurements.min(), feedback.min())
     vmax = torch.maximum(feedback_measurements.max(), feedback.max())
     plt.imshow(feedback_measurements.detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title('Measured feedback')
+    plt.xlabel('Gray value group 1')
+    plt.ylabel('Gray value group 0')
     plt.colorbar()
 
     plt.subplot(1, 3, 3)
     plt.imshow(feedback.detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title('Predicted feedback')
+    plt.xlabel('Gray value group 1')
+    plt.ylabel('Gray value group 0')
     plt.colorbar()
 
 
@@ -88,7 +92,7 @@ def import_lut(filepath_lut, scaling=8.0) -> tt:
 
 
 def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 500,
-              init_noise_level=0.01, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
+              init_noise_level=0.01, do_plot: bool = False, plot_per_its: int = 10,
               smooth_factor=2.0, learning_rate=0.001, phase_response_per_gv_init=None) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements.
@@ -137,7 +141,7 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
         optimizer.step()
         optimizer.zero_grad()
 
-        if do_plot and (it % plot_per_its == 0 or it == 0):
+        if do_plot and (it % plot_per_its == 0 or it == 0 or it == (iterations-1)):
             plt.clf()
             plt.subplot(1, 3, 1)
             plot_phase_response(phase_response_per_gv)
@@ -147,22 +151,11 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
 
         progress_bar.update()
 
-    if do_end_plot:
-        if do_plot:
-            plt.clf()
-        else:
-            plt.figure(figsize=(13, 4))
-        plt.subplot(1, 3, 1)
-
-        plot_phase_response(phase_response_per_gv)
-        plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
-        plt.pause(0.1)
-
-    return phase_response_per_gv.detach()
+    return phase_response_per_gv.detach(), feedback_predicted
 
 
 def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, gray_value_slice_size=16,
-                   **kwargs) -> tt:
+                   do_end_plot=False, **kwargs) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements, piece by piece.
 
@@ -194,7 +187,7 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
         cropped_feedback_measurements = feedback_meas_norm[0:crop_index0, 0:crop_index1]
 
         # Fit newly cropped part
-        cropped_phase_response_per_gv_init = \
+        cropped_phase_response_per_gv_init, feedback_predicted = \
             learn_lut(gray_values0=cropped_gray_values0,
                       gray_values1=cropped_gray_values1,
                       feedback_measurements=cropped_feedback_measurements,
@@ -204,5 +197,12 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
         # Fill in newly learned cropped part into full phase response array
         phase_response_per_gv[:gray_value_crop_size] = cropped_phase_response_per_gv_init
         phase_response_per_gv[gray_value_crop_size:] = cropped_phase_response_per_gv_init[-1]   # Extrapolate constant
+
+    if do_end_plot:
+        plt.figure(figsize=(13, 4))
+        plt.subplot(1, 3, 1)
+        plot_phase_response(phase_response_per_gv)
+        plot_feedback_fit(feedback_meas_norm, feedback_predicted, gray_values0, gray_values1)
+        plt.pause(0.1)
 
     return phase_response_per_gv

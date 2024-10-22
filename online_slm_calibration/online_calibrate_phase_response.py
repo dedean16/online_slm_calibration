@@ -19,7 +19,7 @@ from directories import localdata
 
 # === Settings === #
 do_plot = False
-do_end_plot = False
+do_end_plot = True
 plot_per_its = 1500
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 
@@ -42,12 +42,14 @@ phase_response_per_gv = grow_learn_lut(
     iterations=1001, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its, smooth_factor=10.0,
     gray_value_slice_size=8)
 
-plt.figure()
+# Plot
+plt.subplot(1, 3, 1)
+plt.cla()
 linear_phase = np.linspace(0.0, 2*np.pi, 256)
 phase_response_per_gv_lut_offset = phase_response_per_gv - phase_response_per_gv[int(lut_correct[0])]
 plt.plot(lut_correct, linear_phase, color='C0', label='Ground truth')
 plt.plot(phase_response_per_gv_lut_offset, '--', color='C1', label='Predicted')
 plt.xlabel('Gray value')
-plt.ylabel('Phase response')
+plt.ylabel('Phase response (rad)')
 plt.legend()
 plt.show()
