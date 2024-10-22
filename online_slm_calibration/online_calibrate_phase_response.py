@@ -32,14 +32,13 @@ with h5py.File(filepath_measurements, "r") as f:
 
 feedback_meas_raw = torch.tensor(file_dict['feedback'])
 feedback_meas_med = torch.tensor(median_filter(feedback_meas_raw, size=(1, 1)))
-feedback_meas = (feedback_meas_med - feedback_meas_med.mean()) / feedback_meas_med.std()
 gv0 = torch.tensor(file_dict['gv_row'] % 256, dtype=torch.int32)
 gv1 = torch.tensor(file_dict['gv_col'][0:8, :] % 256, dtype=torch.int32)
 
 lut_correct = import_lut(filepath_lut=filepath_lut)
 
 phase_response_per_gv = grow_learn_lut(
-    gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N, learning_rate=0.02,
+    gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas_med, nonlinearity=N, learning_rate=0.02,
     iterations=1001, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its, smooth_factor=10.0,
     gray_value_slice_size=8)
 

@@ -180,6 +180,10 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
     slice_iterations = int(np.ceil(np.maximum(gray_values0.max(), gray_values1.max()) / gray_value_slice_size))
     phase_response_per_gv = torch.linspace(0.0, 2*np.pi, 256)
 
+    # Normalize feedback measurements
+    feedback_meas_norm = (feedback_measurements - feedback_measurements.mean()) \
+                         / feedback_measurements.std()
+
     for slice_it in range(slice_iterations):
         # Crop to the part of the measurements that we will learn this iteration
         gray_value_crop_size = (slice_it + 1) * gray_value_slice_size
@@ -187,9 +191,9 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
         crop_index1 = (gray_values1 < gray_value_crop_size).sum()
         cropped_gray_values0 = gray_values0[0:crop_index0]
         cropped_gray_values1 = gray_values1[0:crop_index1]
-        cropped_feedback_measurements = feedback_measurements[0:crop_index0, 0:crop_index1]
+        cropped_feedback_measurements = feedback_meas_norm[0:crop_index0, 0:crop_index1]
 
-
+        # Fit newly cropped part
         cropped_phase_response_per_gv_init = \
             learn_lut(gray_values0=cropped_gray_values0,
                       gray_values1=cropped_gray_values1,
@@ -197,7 +201,8 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
                       phase_response_per_gv_init=phase_response_per_gv[:gray_value_crop_size],
                       **kwargs)
 
+        # Fill in newly learned cropped part into full phase response array
         phase_response_per_gv[:gray_value_crop_size] = cropped_phase_response_per_gv_init
-        phase_response_per_gv[gray_value_crop_size:] = cropped_phase_response_per_gv_init[-1]
+        phase_response_per_gv[gray_value_crop_size:] = cropped_phase_response_per_gv_init[-1]   # Extrapolate constant
 
     return phase_response_per_gv
