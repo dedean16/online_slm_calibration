@@ -18,7 +18,7 @@ from directories import localdata
 # === Settings === #
 do_plot = True
 do_end_plot = True
-plot_per_its = 10
+plot_per_its = 20
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 iterations = 1000
 
@@ -30,11 +30,10 @@ with h5py.File(filepath_measurements, "r") as f:
     file_dict = get_dict_from_hdf5(f)
 
 feedback_meas = torch.tensor(file_dict['feedback'])
-gv0 = torch.tensor(file_dict['gv_row'])
-gv1 = torch.tensor(file_dict['gv_col'])
+gv0 = torch.tensor(file_dict['gv_row'] % 256, dtype=torch.int32)
+gv1 = torch.tensor(file_dict['gv_col'] % 256, dtype=torch.int32)
 
 lut_correct = import_lut(filepath_lut=filepath_lut)
 
-learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N, iterations=1000,
-          do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its)
-
+learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N,
+          iterations=iterations, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its)

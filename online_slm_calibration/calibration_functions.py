@@ -49,11 +49,18 @@ def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_
         return feedback_clean + noise_level * torch.randn(feedback_clean.shape)
 
 
+def plot_phase_response(phase_response_per_gv):
+    plt.plot(phase_response_per_gv.detach())
+    plt.xlabel('Gray value')
+    plt.ylabel('Phase (rad)')
+    plt.title('Predicted phase response')
+
+
 def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
     plt.subplot(1, 3, 2)
     extent = (gray_values1.min(), gray_values1.max(), gray_values0.min(), gray_values0.max())
-    vmin = feedback_measurements.min()
-    vmax = feedback_measurements.max()
+    vmin = torch.minimum(feedback_measurements.min(), feedback.min())
+    vmax = torch.maximum(feedback_measurements.max(), feedback.max())
     plt.imshow(feedback_measurements.squeeze().detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
     plt.title('Measured feedback')
     plt.colorbar()
@@ -80,8 +87,9 @@ def import_lut(filepath_lut, scaling=8.0) -> tt:
     return torch.tensor(numbers) / scaling
 
 
-def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 1000,
-              init_noise_level=0.1, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True) -> tt:
+def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 500,
+              init_noise_level=0.1, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
+              smooth_factor=10.0) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements.
 
@@ -97,14 +105,15 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
     Returns:
     """
     # Create initial guess
-    phase_response_per_gv = torch.linspace(0, 2*np.pi, 256) + torch.randn(256) * init_noise_level
+    # phase_response_per_gv = torch.linspace(0, 4*np.pi, 256) + torch.randn(256) * init_noise_level
+    phase_response_per_gv = 2*np.pi*(1-torch.cos(torch.linspace(0, np.pi, 256))) + torch.randn(256) * init_noise_level
     phase_response_per_gv.requires_grad = True
     a = torch.tensor(feedback_measurements.mean(), requires_grad=True)
     b = torch.tensor(3*feedback_measurements.std(), requires_grad=True)
 
     # Initialize parameters and optimizer
-    learning_rate = 5e-2
-    params = [{'lr': learning_rate, 'params': [phase_response_per_gv]}]
+    learning_rate = 0.01
+    params = [{'lr': learning_rate, 'params': [phase_response_per_gv, a, b]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
     progress_bar = tqdm(total=iterations)
@@ -113,8 +122,11 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
         plt.figure(figsize=(13, 4))
 
     for it in range(iterations):
-        feedback_predicted = predict_feedback(gray_values0, gray_values1, phase_response_per_gv, nonlinearity)
-        error = (feedback_measurements - feedback_predicted).abs().pow(2).sum()
+        feedback_predicted = predict_feedback(gray_values0, gray_values1, a, b, phase_response_per_gv, nonlinearity)
+        normalized_feedback_errors = (feedback_measurements - feedback_predicted) / feedback_measurements.mean()
+        feedback_mse = normalized_feedback_errors.abs().pow(2).mean()
+        smoothness_mse = smooth_factor * phase_response_per_gv.diff(n=2).pow(2).mean()
+        error = feedback_mse + smoothness_mse
 
         # Gradient descent step
         error.backward()
@@ -124,7 +136,9 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
         if do_plot and it % plot_per_its == 0:
             plt.clf()
             plt.subplot(1, 3, 1)
+            plot_phase_response(phase_response_per_gv)
             plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
+            plt.title(f'feedback mse: {feedback_mse:.3g}, smoothness mse: {smoothness_mse:.3g}\na: {a:.3g}, b: {b:.3g}')
             plt.pause(0.01)
 
         progress_bar.update()
@@ -136,7 +150,7 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
             plt.figure(figsize=(13, 4))
         plt.subplot(1, 3, 1)
 
-        # TODO: plot LUT vs correct LUT
+        plot_phase_response(phase_response_per_gv)
         plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
         plt.show()
 
