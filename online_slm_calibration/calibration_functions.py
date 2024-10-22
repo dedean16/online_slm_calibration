@@ -153,3 +153,22 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
         plt.show()
 
     return phase_response_per_gv
+
+
+def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 500,
+                   init_noise_level=0.01, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
+                   smooth_factor=10.0, learning_rate=0.001, ) -> tt:
+    """
+    Learn the phase lookup table from dual phase stepping measurements, piece by piece.
+
+    Args:
+        gray_values0:
+        gray_values1: Same as gray_values1, for the second group.
+        feedback_measurements:
+        nonlinearity: Nonlinearity number. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
+        iterations: Number of learning iterations.
+        do_plot: If True, plot during learning.
+        plot_per_its: Plot per this many learning iterations.
+        init_noise_level: Standard deviation of the Gaussian noise added to the initial phase_response guess.
+    Returns:
+    """

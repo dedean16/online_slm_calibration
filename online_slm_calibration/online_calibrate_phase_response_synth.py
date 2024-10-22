@@ -16,11 +16,11 @@ from directories import localdata
 # === Settings === #
 do_plot = True
 do_end_plot = True
-plot_per_its = 40
+plot_per_its = 50
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 iterations = 2001
 
-noise_level = 1.0
+noise_level = 0.5
 
 
 phase_response_per_gv_gt = 2.5 * np.pi * torch.linspace(0.0, 1.0, 256) ** 2
@@ -33,5 +33,6 @@ gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
 
 feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_response_per_gv_gt, nonlinearity=N, noise_level=noise_level)
 
-learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N, learning_rate=0.04,
-          iterations=iterations, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its)
+learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N, learning_rate=0.03,
+          iterations=iterations, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its,
+          smooth_factor=30.0)
