@@ -161,10 +161,17 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
     return phase_response_per_gv.detach()
 
 
+# Create a Gaussian kernel function
+def gaussian_kernel1d(kernel_size: int, sigma: float):
+    # Create a tensor of equally spaced values (kernel_size elements centered around 0)
+    x = torch.arange(-(kernel_size // 2), kernel_size // 2 + 1, dtype=torch.float32)
+    gaussian = torch.exp(-0.5 * (x / sigma) ** 2)
+    return gaussian / gaussian.sum()
+
 
 def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlinearity=2, iterations: int = 50,
                 do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
-                learning_rate=0.1, phase_stroke_init=2.5 * torch.pi, balance_factor=1.0) -> tuple[float, float,tt, tt]:
+                learning_rate=0.1, phase_stroke_init=2.5 * torch.pi, balance_factor=1.0, sigma=3.0) -> tuple[float, float,tt, tt]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
     This function uses the model:
@@ -194,6 +201,8 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     b = (0.5 * (measurements.max() - measurements.min())).pow(1/nonlinearity)
     E = b * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
     E.requires_grad_(True)
+    #kernel_size = round(3*sigma)*2+1
+    #kernel = gaussian_kernel1d(kernel_size, sigma).view(1,1,-1)
 
     # Initialize parameters and optimizer
     params = [
@@ -208,14 +217,15 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     def model(E, lr):
         E0 = E[gray_values0].view(-1, 1)
         E1 = E[gray_values1].view(1, -1)
-        intenstity = (E0 + lr * E1).abs().pow(nonlinearity)
+        intenstity = (E0 + lr * E1).abs().pow(2 * nonlinearity)
         return intenstity - intenstity.mean()
 
     for it in range(iterations):
         feedback_predicted = model(E, lr)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
-        #loss_reg += 1.0 * E.abs().diff(n=2).pow(2).mean()
+        #smooth_amplitude = torch.nn.functional.conv1d(E.abs().view(1,1,-1), kernel, padding=kernel_size//2)
+        #loss_reg += (smooth_amplitude-E.abs()).pow(2).mean()
         loss = loss_meas + loss_reg
 
         # Gradient descent step
@@ -241,6 +251,8 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     dphase = torch.where(dphase > np.pi, dphase - 2*np.pi, dphase)
     dphase = torch.where(dphase < -np.pi, dphase + 2*np.pi, dphase)
     phase =torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
+    if phase[-1] < 0:
+        phase = -phase  # ensure phase is increasing
 
     return lr.item(), phase.detach(), amplitude.detach()
 
