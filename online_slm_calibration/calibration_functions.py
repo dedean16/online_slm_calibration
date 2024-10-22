@@ -190,7 +190,7 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     # normalize measurements to have mean=1
     # then initialize a = 1.0 and E=(peak-peak(measurements)/2)^(1/non_linearity)
     measurements = measurements / measurements.mean()
-    lr = torch.tensor(1.0, requires_grad=True)
+    lr = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
     a = torch.tensor(0.0, requires_grad=True)
     b = (0.5 * (measurements.max() - measurements.min())).pow(1/nonlinearity)
     E = b * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
@@ -198,7 +198,7 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
 
     # Initialize parameters and optimizer
     params = [
-        {'lr': learning_rate * b.item(), 'params': [a, E]},
+        {'lr': learning_rate, 'params': [a, E]},
         {'lr': learning_rate, 'params': [lr]}]
 
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
@@ -215,8 +215,8 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     for it in range(iterations):
         feedback_predicted = model(E, lr, a)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
-        loss_reg = balance_factor * (lr - 1.0).pow(2)
-#        smoothness_mse = smooth_factor * phase_response_per_gv.diff(n=2).pow(2).mean()
+        loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
+        #loss_reg += 1.0 * E.abs().diff(n=2).pow(2).mean()
         loss = loss_meas + loss_reg
 
         # Gradient descent step

@@ -19,7 +19,7 @@ do_end_plot = True
 plot_per_its = 500
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 
-noise_level = 0.3
+noise_level = 0 # 0.3
 
 
 phase_response_per_gv_gt = 4.0 * np.pi * torch.linspace(0.0, 1.0, 256) ** 2
@@ -37,7 +37,7 @@ a, lr, phase_response_per_gv_fit, amplitude = learn_field(gray_values0=gv0,
                 learning_rate=0.1, iterations=500, do_plot=do_plot, do_end_plot=do_end_plot,
                 plot_per_its=10)
 
-print(f'a = {a} ({a_gt}), b = {amplitude.mean()} (b_gt), lr = {lr} (1.0)')
+print(f'a = {a} ({a_gt}), b = {amplitude.mean()} ({b_gt}), lr = {lr} (1.0)')
 
 plt.figure()
 plt.subplot(2, 1, 1)
