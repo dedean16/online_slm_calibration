@@ -16,7 +16,7 @@ from directories import localdata
 # === Settings === #
 do_plot = True
 do_end_plot = True
-plot_per_its = 2000
+plot_per_its = 500
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 
 noise_level = 0.3
@@ -33,8 +33,8 @@ gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
 feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_response_per_gv_gt, nonlinearity=N, noise_level=noise_level)
 
 grow_learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N,
-               learning_rate=0.04, iterations=2500, do_plot=do_plot, do_end_plot=do_end_plot,
-               plot_per_its=plot_per_its, smooth_factor=10.0)
+               learning_rate=0.05, iterations=1500, do_plot=do_plot, do_end_plot=do_end_plot,
+               plot_per_its=plot_per_its, smooth_factor=5.0)
 
 plt.figure()
 plt.plot(phase_response_per_gv_gt, color='C0', label='Ground truth')
