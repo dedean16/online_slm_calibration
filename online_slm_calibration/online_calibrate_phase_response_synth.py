@@ -32,12 +32,12 @@ gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
 
 feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_response_per_gv_gt, nonlinearity=N, noise_level=noise_level)
 
-a, lr, phase_response_per_gv_fit, amplitude = learn_field(gray_values0=gv0,
+lr, phase_response_per_gv_fit, amplitude = learn_field(gray_values0=gv0,
                 gray_values1=gv1,measurements=feedback_meas, nonlinearity=N,
                 learning_rate=0.1, iterations=500, do_plot=do_plot, do_end_plot=do_end_plot,
                 plot_per_its=10)
 
-print(f'a = {a} ({a_gt}), b = {amplitude.mean()} ({b_gt}), lr = {lr} (1.0)')
+print(f'b = {amplitude.mean()} ({b_gt}), lr = {lr} (1.0)')
 
 plt.figure()
 plt.subplot(2, 1, 1)
