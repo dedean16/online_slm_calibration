@@ -1,127 +1,37 @@
-import numpy as np
+# External 3rd party
 import torch
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
 
+# External ours
 from openwfs.algorithms.troubleshoot import field_correlation
 
-
-def phase_correlation(phase1, phase2):
-    return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
-
-
-def phase_response(input_phase, c, dim=-3):
-    """
-
-    Args:
-
-    """
-    pows = torch.arange(c.numel()).view(c.shape)
-    actual_phase = 2*np.pi * (c * (input_phase/(2*np.pi)) ** pows).sum(dim=dim)
-    return actual_phase
+# Internal
+from helper_functions import get_dict_from_hdf5
+from calibration_functions import learn_lut, predict_feedback
+from directories import localdata
 
 
-def predict_feedback(phase_in1, phase_in2, a, b, c, N, noise_level):
-    """
+# === Settings === #
+do_plot = True
+do_end_plot = True
+plot_per_its = 40
+N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
+iterations = 2001
 
-    Args:
-
-    """
-    phase_diff_actual = phase_response(phase_in2, c) - phase_response(phase_in1, c)
-    feedback_clean = a + b * (torch.cos(phase_diff_actual / 2)**(2*N))
-    feedback = feedback_clean + noise_level * torch.randn(feedback_clean.shape)
-    return feedback
+noise_level = 1.0
 
 
-def plot_phase_curve(c_gt, c):
-    phase_in = torch.linspace(0, 2 * np.pi, 100)
-    phase_curve_gt = phase_response(phase_in, c_gt).squeeze()
-    phase_curve_pred = phase_response(phase_in, c.detach()).squeeze()
+phase_response_per_gv_gt = 2.5 * np.pi * torch.linspace(0.0, 1.0, 256) ** 2
+a_gt = torch.tensor(5.0)
+b_gt = torch.tensor(20.0)
 
-    phase_corr = phase_correlation(phase_curve_gt, phase_curve_pred)
-
-    plt.plot(phase_in, phase_in, '--', color=(0.8, 0.8, 0.8), label='Linear')
-    plt.plot(phase_in, phase_curve_gt, label='Ground truth')
-    plt.plot(phase_in, phase_curve_pred, label='Prediction')
-    plt.xlabel('phase in')
-    plt.ylabel('phase actual')
-    plt.title(f'iter {it}, |phase correlation|={np.abs(phase_corr):.4f}')
-    plt.legend()
+gv0 = torch.arange(0, 256, dtype=torch.int32)
+gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
 
 
-do_plot = False
+feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_response_per_gv_gt, nonlinearity=N, noise_level=noise_level)
 
-
-
-# Define 'measured' phases
-P1 = 24
-P2 = 12
-phase1 = 2*np.pi/P1 * torch.arange(P1).view(1, 1, -1)
-phase2 = 2*np.pi/P2 * torch.arange(P2).view(1, -1, 1)
-N = 2
-
-# Create synthetic measurement
-num_terms = 5
-a_gt = 0.2
-b_gt = 0.7
-c_gt = torch.randn(num_terms, 1, 1) * 0.2
-c_gt[1, 0, 0] += 1
-noise_level_synth = 0.15
-feedback_synth = predict_feedback(phase1, phase2, a_gt, b_gt, c_gt, N, noise_level_synth)
-
-# Create init prediction
-num_terms = 5
-a = torch.tensor(0.0, requires_grad=True)
-b = torch.tensor(1.0, requires_grad=True)
-c = torch.zeros(num_terms, 1, 1)
-c[1, 0, 0] += 1
-c.requires_grad = True
-noise_level = 0.0
-
-
-# Initialize parameters and optimizer
-learning_rate = 2e-3
-params = [{'lr': learning_rate, 'params': [a, b, c]}]
-optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
-
-
-iterations = 1000
-progress_bar = tqdm(total=iterations)
-
-for it in range(iterations):
-    feedback = predict_feedback(phase1, phase2, a, b, c, N, noise_level)
-
-    error = (feedback_synth - feedback).abs().pow(2).sum()
-
-    # Gradient descent step
-    error.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-
-    if do_plot:
-        plt.cla()
-        plot_phase_curve(c_gt, c)
-        plt.pause(0.01)
-
-    progress_bar.update()
-
-
-plt.cla()
-plot_phase_curve(c_gt, c)
-
-plt.figure()
-plt.subplot(1, 2, 1)
-plt.imshow(feedback_synth.detach())
-plt.title('Synth feedback')
-
-plt.subplot(1, 2, 2)
-plt.imshow(feedback.detach())
-plt.title('Predicted feedback')
-plt.show()
-
-print(f'a_gt: {a_gt}')
-print(f'a: {a}')
-print(f'b_gt: {b_gt}')
-print(f'b: {b}')
-print(f'c_gt: {c_gt}')
-print(f'c: {c}')
+learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N, learning_rate=0.04,
+          iterations=iterations, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its)

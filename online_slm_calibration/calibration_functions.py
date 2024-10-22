@@ -88,8 +88,8 @@ def import_lut(filepath_lut, scaling=8.0) -> tt:
 
 
 def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 500,
-              init_noise_level=0.1, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
-              smooth_factor=10.0) -> tt:
+              init_noise_level=0.01, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
+              smooth_factor=10.0, learning_rate=0.001) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements.
 
@@ -105,14 +105,12 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
     Returns:
     """
     # Create initial guess
-    # phase_response_per_gv = torch.linspace(0, 4*np.pi, 256) + torch.randn(256) * init_noise_level
-    phase_response_per_gv = 2*np.pi*(1-torch.cos(torch.linspace(0, np.pi, 256))) + torch.randn(256) * init_noise_level
+    phase_response_per_gv = torch.linspace(0, 2*np.pi, 256) + torch.randn(256) * init_noise_level
     phase_response_per_gv.requires_grad = True
     a = torch.tensor(feedback_measurements.mean(), requires_grad=True)
     b = torch.tensor(3*feedback_measurements.std(), requires_grad=True)
 
     # Initialize parameters and optimizer
-    learning_rate = 0.01
     params = [{'lr': learning_rate, 'params': [phase_response_per_gv, a, b]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
