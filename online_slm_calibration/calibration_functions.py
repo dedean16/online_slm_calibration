@@ -169,9 +169,34 @@ def gaussian_kernel1d(kernel_size: int, sigma: float):
     return gaussian / gaussian.sum()
 
 
+def window_cosine_edge(size, edge_width):
+    """
+    Create a window with cosine edges.
+
+    Args:
+        size (int): Total size of the window.
+        edge_width (int): Width of the cosine-tapered edges.
+
+    Returns:
+        np.ndarray: The window array.
+    """
+    if edge_width * 2 > size:
+        raise ValueError("edge_width must be less than or equal to half of the size")
+
+    window = np.ones(size)
+    edge = np.linspace(0, np.pi / 2, edge_width)
+    taper = np.sin(edge) ** 2
+
+    window[:edge_width] = taper
+    window[-edge_width:] = taper[::-1]
+
+    return window
+
+
 def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlinearity=2, iterations: int = 50,
-                do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
-                learning_rate=0.1, phase_stroke_init=2.5 * torch.pi, balance_factor=1.0, sigma=3.0) -> tuple[float, float,tt, tt]:
+                do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True, learning_rate=0.1,
+                phase_stroke_init=2.5 * torch.pi, balance_factor=1.0, sigma=2.0, smooth_loss_factor=1.0) -> \
+                tuple[float, float, tt, tt]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
     This function uses the model:
@@ -189,6 +214,9 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         do_plot: If True, plot during learning.
         plot_per_its: Plot per this many learning iterations.
         init_noise_level: Standard deviation of the Gaussian noise added to the initial phase_response guess.
+        sigma: Standard deviation of gaussian kernel for computing smoothness score.
+        smooth_loss_factor: Factor for multiplying smoothness loss.
+
     Returns:
         lr, phase[i], ampltude[i]
     """
@@ -201,8 +229,8 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     b = (0.5 * (measurements.max() - measurements.min())).pow(1/nonlinearity)
     E = b * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
     E.requires_grad_(True)
-    #kernel_size = round(3*sigma)*2+1
-    #kernel = gaussian_kernel1d(kernel_size, sigma).view(1,1,-1)
+    kernel_size = round(3*sigma)*2+1
+    kernel = gaussian_kernel1d(kernel_size, sigma).view(1, 1, -1) + 0j
 
     # Initialize parameters and optimizer
     params = [
@@ -217,16 +245,19 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     def model(E, lr):
         E0 = E[gray_values0].view(-1, 1)
         E1 = E[gray_values1].view(1, -1)
-        intenstity = (E0 + lr * E1).abs().pow(2 * nonlinearity)
-        return intenstity - intenstity.mean()
+        signal_intenstity = (E0 + lr * E1).abs().pow(2 * nonlinearity)
+        return signal_intenstity - signal_intenstity.mean()
 
     for it in range(iterations):
         feedback_predicted = model(E, lr)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
-        #smooth_amplitude = torch.nn.functional.conv1d(E.abs().view(1,1,-1), kernel, padding=kernel_size//2)
-        #loss_reg += (smooth_amplitude-E.abs()).pow(2).mean()
-        loss = loss_meas + loss_reg
+
+        smooth_E = torch.nn.functional.conv1d(E.view(1, 1, -1), kernel, padding=kernel_size//2)
+        window = torch.tensor(window_cosine_edge(E.numel(), kernel_size//2))
+        loss_smooth = smooth_loss_factor * (window * (smooth_E - E).squeeze()).abs().pow(2).mean()
+
+        loss = loss_meas + loss_reg + loss_smooth
 
         # Gradient descent step
         loss.backward()

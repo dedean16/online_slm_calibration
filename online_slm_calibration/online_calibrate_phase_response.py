@@ -15,7 +15,6 @@ from directories import data_folder
 # === Settings === #
 do_plot = True
 do_end_plot = True
-plot_per_its = 20
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 iterations = 1000
 
