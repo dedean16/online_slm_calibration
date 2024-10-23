@@ -11,7 +11,7 @@ from openwfs.algorithms.troubleshoot import field_correlation
 
 # Internal
 from helper_functions import get_dict_from_hdf5
-from calibration_functions import import_lut, learn_lut
+from calibration_functions import import_lut, learn_field
 from directories import localdata
 
 
@@ -35,5 +35,19 @@ gv1 = torch.tensor(file_dict['gv_col'] % 256, dtype=torch.int32)
 
 lut_correct = import_lut(filepath_lut=filepath_lut)
 
-learn_lut(gray_values0=gv0, gray_values1=gv1, feedback_measurements=feedback_meas, nonlinearity=N,
-          iterations=iterations, do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=plot_per_its)
+lr, phase_response_per_gv_fit, amplitude = learn_field(
+    gray_values0=gv0, gray_values1=gv1,measurements=feedback_meas, nonlinearity=N, learning_rate=0.05, iterations=1000,
+    do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30)
+
+print(f'b = {amplitude.mean()}, lr = {lr} (1.0)')
+
+plt.figure()
+plt.subplot(2, 1, 1)
+# plt.plot(phase_response_per_gv_gt, color='C0', label='Ground truth')
+plt.plot(phase_response_per_gv_fit, '--', color='C1', label='Predicted')
+plt.xlabel('Gray value')
+plt.ylabel('Phase response')
+plt.legend()
+plt.subplot(2, 1, 2)
+plt.plot(amplitude, color='C0', label='Amplitude')
+plt.show()
