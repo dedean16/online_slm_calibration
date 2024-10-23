@@ -1,6 +1,3 @@
-# Built-in
-import os
-
 # External 3rd party
 import torch
 import matplotlib.pyplot as plt
@@ -12,7 +9,7 @@ from openwfs.algorithms.troubleshoot import field_correlation
 # Internal
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import import_lut, learn_field
-from directories import localdata
+from directories import data_folder
 
 
 # === Settings === #
@@ -23,8 +20,8 @@ N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 
 iterations = 1000
 
 
-filepath_lut = os.path.join(localdata, '2023_08_inline_slm_calibration/LUT Files/corrected_2022_08_26 10-47-28.blt')
-filepath_measurements = os.path.join(localdata, 'harish_signal_feedback.mat')
+filepath_lut = data_folder.joinpath('2023_08_inline_slm_calibration/LUT Files/corrected_2022_08_26 10-47-28.blt')
+filepath_measurements = data_folder.joinpath('slm_calibration_signal_feedback.mat')
 
 with h5py.File(filepath_measurements, "r") as f:
     file_dict = get_dict_from_hdf5(f)

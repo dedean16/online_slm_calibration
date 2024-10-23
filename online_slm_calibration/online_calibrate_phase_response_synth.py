@@ -8,9 +8,7 @@ from tqdm import tqdm
 from openwfs.algorithms.troubleshoot import field_correlation
 
 # Internal
-from helper_functions import get_dict_from_hdf5
 from calibration_functions import predict_feedback, grow_learn_lut, learn_field
-from directories import localdata
 
 
 # === Settings === #

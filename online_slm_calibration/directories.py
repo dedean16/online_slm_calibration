@@ -1,2 +1,7 @@
-# localdata = 'C:/LocalData/online_slm_calibration'
-localdata = '/home/dani/LocalData/online_slm_calibration'
+"""
+This file defines file system paths to e.g. data folders.
+"""
+from pathlib import Path
+
+
+data_folder = Path("//ad.utwente.nl/TNW/BMPI/Data/Daniel Cox/ExperimentalData/online_slm_calibration")
