@@ -1,41 +1,35 @@
 # External 3rd party
 import torch
-import matplotlib.pyplot as plt
 import numpy as np
-from tqdm import tqdm
-
-# External ours
-from openwfs.algorithms.troubleshoot import field_correlation
-
-# Internal
-from calibration_functions import predict_feedback, grow_learn_field
-
+import matplotlib.pyplot as plt
+from calibration_functions import learn_field, predict_feedback
 
 # === Settings === #
-do_plot = True
-do_end_plot = False
-N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
+settings = {
+    "do_plot": True,
+    "plot_per_its": 30,
+    "nonlinearity": 2,
+    "learning_rate": 0.3,
+    "iterations": 1800,
+    "smooth_loss_factor": 0,
+}
 
+# construct ground truth
 noise_level = 0.3
 
-
 phase_gt = 4.0 * np.pi * torch.linspace(0.0, 1.0, 256) ** 2
-a_gt = torch.tensor(5.0)
-b_gt = torch.tensor(20.0)
+a_gt = 5.0
+b_gt = 20.0
 
-gv0 = torch.arange(0, 256, dtype=torch.int32)
-gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
+gv0 = np.arange(0, 256)
+gv1 = np.arange(0, 256, 32)
+
+measurements = predict_feedback(gv0, gv1, a_gt, b_gt, phase_gt, nonlinearity=settings['nonlinearity'], noise_level=noise_level)
 
 
-feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_gt, nonlinearity=N, noise_level=noise_level)
+nonlinearity, lr, phase, amplitude = learn_field(gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
 
-
-lr, phase_response_per_gv_fit, amplitude = learn_field(gray_values0=gv0,
-                gray_values1=gv1,measurements=feedback_meas, nonlinearity=N,
-                learning_rate=0.2, iterations=500, do_plot=do_plot, do_end_plot=do_end_plot,
-                plot_per_its=3, smooth_loss_factor=2.0, phase_stroke_init=12 )
-
-print(f'b = {amplitude.mean()} ({b_gt}), B = {B} (1.0)')
+print(f'b = {amplitude.mean()} ({b_gt}), B = {lr} (1.0)')
 
 plt.figure()
 plt.subplot(2, 1, 1)

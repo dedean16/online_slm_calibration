@@ -206,6 +206,7 @@ def window_cosine_edge(size, edge_width):
 
     return window
 
+
 def unwrap(phase):
     ### TODO: The current approach does not guarantee |phase steps| < π. This will work for most practical cases,
     ### TODO: but should be done recursively to work for any case.
@@ -255,7 +256,7 @@ def learn_field(
         smooth_loss_factor: Factor for multiplying smoothness loss.
 
     Returns:
-        lr, phase[i], ampltude[i]
+        nonlinearity, lr, phase[i], ampltude[i]
     """
 
     # Initial guess:
@@ -316,9 +317,6 @@ def learn_field(
     return nonlinearity.item(), lr.item(), phase.detach().numpy(), amplitude.detach().numpy()
 
 
-def grow_learn_lut(
-    gray_values0: tt, gray_values1: tt, feedback_measurements: tt, gray_value_slice_size=16, **kwargs
-) -> tt:
 def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_value_slice_size=16,
                      **kwargs) -> tuple[float, Tensor, Tensor]:
     """
