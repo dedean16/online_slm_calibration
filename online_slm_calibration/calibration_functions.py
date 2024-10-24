@@ -217,7 +217,7 @@ def unwrap(E):
 def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlinearity=2, iterations: int = 50,
                 do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True, learning_rate=0.1,
                 phase_stroke_init=2.5 * torch.pi, balance_factor=1.0, sigma=2.0, smooth_loss_factor=1.0,
-                lr_init=None, E_init=None) -> tuple[float, tt, tt]:
+                B_init=None, E_init=None) -> tuple[float, tt, tt]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
     This function uses the model:
@@ -239,7 +239,7 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         smooth_loss_factor: Factor for multiplying smoothness loss.
 
     Returns:
-        lr, phase[i], ampltude[i]
+        B, phase[i], ampltude[i]
     """
 
     # Normalize measurements to have mean=1, then subtract the mean
@@ -250,10 +250,10 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     kernel = gaussian_kernel1d(kernel_size, sigma).view(1, 1, -1) + 0j
 
     # Parameter initialization
-    if lr_init is None:
-        lr = torch.tensor(1.0, dtype=torch.complex64)
+    if B_init is None:
+        B = torch.tensor(1.0, dtype=torch.complex64)
     else:
-        lr = torch.tensor(lr_init)
+        B = torch.tensor(B_init)
 
     if E_init is None:
         # Initialize a = 1.0 and E=(peak-peak(measurements)/2)^(1/non_linearity)
@@ -262,13 +262,11 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     else:
         E = E_init
 
-    lr.requires_grad = True
+    B.requires_grad = True
     E.requires_grad = True
 
     # Initialize parameters and optimizer
-    params = [
-        {'lr': learning_rate, 'params': [lr, E]}]
-
+    params = [{'lr': learning_rate, 'params': [B, E]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
     progress_bar = tqdm(total=iterations)
 
@@ -282,9 +280,9 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         return signal_intenstity - signal_intenstity.mean()
 
     for it in range(iterations):
-        feedback_predicted = model(E, lr)
+        feedback_predicted = model(E, B)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
-        loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
+        loss_reg = balance_factor * (B - 1.0).abs().pow(2)
 
         smooth_E = torch.nn.functional.conv1d(E.view(1, 1, -1), kernel, padding=kernel_size//2)
         window = torch.tensor(window_cosine_edge(E.numel(), kernel_size//2))
@@ -303,14 +301,14 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
             plt.subplot(1, 3, 1)
             plot_phase_response(torch.angle(E))
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f'feedback mse: {loss_meas:.3g}, smoothness mse: {loss_reg:.3g}\nlr: {lr:.3g}')
+            plt.title(f'feedback mse: {loss_meas:.3g}, smoothness mse: {loss_reg:.3g}\nB: {B:.3g}')
             plt.pause(0.01)
 
         progress_bar.update()
 
     phase, amplitude = unwrap(E)
 
-    return lr.item(), phase.detach(), amplitude.detach()
+    return B.item(), phase.detach(), amplitude.detach()
 
 
 def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_value_slice_size=16,
@@ -333,7 +331,7 @@ def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_
     phase = torch.linspace(0.0, 2*np.pi, 256)
     amplitude = torch.ones(256)
     E = amplitude * torch.exp(1j * phase)
-    lr = 1.0
+    B = 1.0
 
     # Learn iteratively larger slices of the measurement data
     for slice_it in range(slice_iterations):
@@ -346,12 +344,12 @@ def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_
         cropped_feedback_measurements = measurements[0:crop_index0, 0:crop_index1]
 
         # Learn with new slice
-        lr, cropped_phase, cropped_amplitude = \
+        B, cropped_phase, cropped_amplitude = \
             learn_field(gray_values0=cropped_gray_values0,
                         gray_values1=cropped_gray_values1,
                         measurements=cropped_feedback_measurements,
                         E_init=E[:c],
-                        lr_init=lr,
+                        B_init=B,
                         **kwargs)
 
         phase[:c] = cropped_phase
@@ -360,4 +358,4 @@ def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_
         amplitude[c:] = cropped_amplitude[-1]
         E = amplitude * np.exp(1j * phase)
 
-    return lr, phase, amplitude
+    return B, phase, amplitude

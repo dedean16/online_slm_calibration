@@ -33,17 +33,17 @@ with h5py.File(filepath_ref) as f:
     ref_dict = get_dict_from_hdf5(f)
 
 # Learn phase response
-lr, phase_response_per_gv_fit, amplitude = grow_learn_field(
+B, phase, amplitude = grow_learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.05, iterations=100,
     do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30)
 
-print(f'b = {amplitude.mean()}, lr = {lr} (1.0)')
+print(f'b = {amplitude.mean()}, B = {B} (1.0)')
 
 plt.figure()
 plt.subplot(2, 1, 1)
 plt.errorbar(ref_dict['gray_values'][0], ref_dict['phase_mean'][0], yerr=ref_dict['phase_std'][0],
              linestyle='--', color='#333333', label='Reference')
-plt.plot(phase_response_per_gv_fit, color='C0', label='Predicted')
+plt.plot(phase, color='C0', label='Predicted')
 plt.xlabel('Gray value')
 plt.ylabel('Phase response')
 plt.legend()
