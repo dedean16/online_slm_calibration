@@ -17,8 +17,9 @@ def phase_correlation(phase1, phase2):
     return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
 
-def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_gv: tt, nonlinearity,
-                     noise_level=0.0) -> tt:
+def predict_feedback(
+    gray_value0, gray_value1, a: tt, b: tt, phase_response_per_gv: tt, nonlinearity, noise_level=0.0
+) -> tt:
     """
 
     Args:
@@ -51,9 +52,9 @@ def predict_feedback(gray_value0, gray_value1, a: tt, b: tt, phase_response_per_
 
 def plot_phase_response(phase_response_per_gv):
     plt.plot(phase_response_per_gv.detach())
-    plt.xlabel('Gray value')
-    plt.ylabel('Phase (rad)')
-    plt.title('Predicted phase response')
+    plt.xlabel("Gray value")
+    plt.ylabel("Phase (rad)")
+    plt.title("Predicted phase response")
 
 
 def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
@@ -61,13 +62,13 @@ def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values
     extent = (gray_values1.min(), gray_values1.max(), gray_values0.min(), gray_values0.max())
     vmin = torch.minimum(feedback_measurements.min(), feedback.min())
     vmax = torch.maximum(feedback_measurements.max(), feedback.max())
-    plt.imshow(feedback_measurements.detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
-    plt.title('Measured feedback')
+    plt.imshow(feedback_measurements.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
+    plt.title("Measured feedback")
     plt.colorbar()
 
     plt.subplot(1, 3, 3)
-    plt.imshow(feedback.detach(), extent=extent, interpolation='nearest', vmin=vmin, vmax=vmax)
-    plt.title('Predicted feedback')
+    plt.imshow(feedback.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
+    plt.title("Predicted feedback")
     plt.colorbar()
 
 
@@ -82,14 +83,25 @@ def import_lut(filepath_lut, scaling=8.0) -> tt:
 
     Returns: the lookup table as 256-element tensor.
     """
-    with open(filepath_lut, 'r') as file:
+    with open(filepath_lut, "r") as file:
         numbers = [float(line.strip()) for line in file.readlines()]
     return torch.tensor(numbers) / scaling
 
 
-def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, nonlinearity=2, iterations: int = 500,
-              init_noise_level=0.01, do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True,
-              smooth_factor=2.0, learning_rate=0.001, phase_response_per_gv_init=None) -> tt:
+def learn_lut(
+    gray_values0: tt,
+    gray_values1: tt,
+    feedback_measurements: tt,
+    nonlinearity=2,
+    iterations: int = 500,
+    init_noise_level=0.01,
+    do_plot: bool = False,
+    plot_per_its: int = 10,
+    do_end_plot: bool = True,
+    smooth_factor=2.0,
+    learning_rate=0.001,
+    phase_response_per_gv_init=None,
+) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements.
 
@@ -106,7 +118,7 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
     """
     # Initial guess phase response
     if phase_response_per_gv_init is None:
-        phase_response_per_gv = torch.linspace(0, 2*np.pi, 256) + torch.randn(256) * init_noise_level
+        phase_response_per_gv = torch.linspace(0, 2 * np.pi, 256) + torch.randn(256) * init_noise_level
     else:
         phase_response_per_gv = phase_response_per_gv_init.detach()
     phase_response_per_gv.requires_grad = True
@@ -114,10 +126,10 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
     # Initial guess a and b
     ### TODO: rescale feedback measurements instead of guessing order of magnitude of a and b
     a = torch.tensor(feedback_measurements.mean(), requires_grad=True)
-    b = torch.tensor(3*feedback_measurements.std(), requires_grad=True)
+    b = torch.tensor(3 * feedback_measurements.std(), requires_grad=True)
 
     # Initialize parameters and optimizer
-    params = [{'lr': learning_rate, 'params': [phase_response_per_gv, a, b]}]
+    params = [{"lr": learning_rate, "params": [phase_response_per_gv, a, b]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
     progress_bar = tqdm(total=iterations)
@@ -142,7 +154,7 @@ def learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, non
             plt.subplot(1, 3, 1)
             plot_phase_response(phase_response_per_gv)
             plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f'feedback mse: {feedback_mse:.3g}, smoothness mse: {smoothness_mse:.3g}\na: {a:.3g}, b: {b:.3g}')
+            plt.title(f"feedback mse: {feedback_mse:.3g}, smoothness mse: {smoothness_mse:.3g}\na: {a:.3g}, b: {b:.3g}")
             plt.pause(0.01)
 
         progress_bar.update()
@@ -193,10 +205,20 @@ def window_cosine_edge(size, edge_width):
     return window
 
 
-def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlinearity=2, iterations: int = 50,
-                do_plot: bool = False, plot_per_its: int = 10, do_end_plot: bool = True, learning_rate=0.1,
-                phase_stroke_init=2.5 * torch.pi, balance_factor=1.0, sigma=2.0, smooth_loss_factor=1.0) -> \
-                tuple[float, float, tt, tt]:
+def learn_field(
+    *,
+    gray_values0,
+    gray_values1,
+    measurements,
+    nonlinearity=1,
+    iterations: int = 50,
+    do_plot: bool = False,
+    plot_per_its: int = 10,
+    learning_rate=0.1,
+    phase_stroke_init=2.5 * torch.pi,
+    balance_factor=1.0,
+    smooth_loss_factor=1.0,
+) -> tuple[float, float, np.array, np.ndarray]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
     This function uses the model:
@@ -224,27 +246,21 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     # Initial guess:
     # normalize measurements to have std=1, then subtract the mean
     # then initialize a = 1.0 and E=(peak-peak(measurements)/2)^(1/non_linearity)
+    measurements = torch.tensor(measurements, dtype=torch.float32)
     measurements = measurements / measurements.std()
     measurements -= measurements.mean()
-    lr = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
-    b = (0.5 * (measurements.max() - measurements.min())).pow(1/nonlinearity)
+    measurements.detach()
+    b = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
     E = b * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
     E.detach()
     E.requires_grad_(True)
-    measurements.detach()
+    lr = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
     nonlinearity = torch.tensor(nonlinearity, dtype=torch.float32, requires_grad=True)
 
     # Initialize parameters and optimizer
-    params = [
-        {'lr': learning_rate, 'params': [lr, E]},
-        {'lr': learning_rate * 0.1, 'params': [nonlinearity]}
-    ]
-
+    params = [{"lr": learning_rate, "params": [lr, E]}, {"lr": learning_rate * 0.1, "params": [nonlinearity]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
     progress_bar = tqdm(total=iterations)
-
-    if do_plot:
-        plt.figure(figsize=(13, 4))
 
     def model(E, lr):
         E0 = E[gray_values0].view(-1, 1)
@@ -264,37 +280,36 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         optimizer.step()
         optimizer.zero_grad()
 
-        if (do_plot and (it % plot_per_its == 0 or it == 0)) or (do_end_plot and it == iterations-1):
-            plt.clf()
+        if do_plot and (it % plot_per_its == 0 or it == 0 or it == iterations - 1):
+            if it == 0:
+                plt.figure(figsize=(13, 4))
+            else:
+                plt.clf()
             plt.subplot(1, 3, 1)
             plot_phase_response(torch.angle(E))
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f'feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg:{loss_reg:.3g}\nlr: {lr:.3g}')
+            plt.title(f"feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg:{loss_reg:.3g}\nlr: {lr:.3g}")
             plt.pause(0.01)
 
         progress_bar.update()
 
     # split phase and amplitude, and unwrap phase
-    E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min()) # experimentally
+    E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())  # experimental
     amplitude = E.abs()
     phase = torch.angle(E)
     dphase = torch.diff(phase)
-    dphase = torch.where(dphase > np.pi, dphase - 2*np.pi, dphase)
-    dphase = torch.where(dphase < -np.pi, dphase + 2*np.pi, dphase)
-    phase =torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
+    dphase = torch.where(dphase > np.pi, dphase - 2 * np.pi, dphase)
+    dphase = torch.where(dphase < -np.pi, dphase + 2 * np.pi, dphase)
+    phase = torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
     if phase[-1] < 0:
         phase = -phase  # ensure phase is increasing
 
-    plt.figure()
-    plt.plot(E.detach().real, E.detach().imag)
-    plt.show()
-
-    print(nonlinearity)
-    return lr.item(), phase.detach(), amplitude.detach()
+    return nonlinearity.item(), lr.item(), phase.detach().numpy(), amplitude.detach().numpy()
 
 
-def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt, gray_value_slice_size=16,
-                   **kwargs) -> tt:
+def grow_learn_lut(
+    gray_values0: tt, gray_values1: tt, feedback_measurements: tt, gray_value_slice_size=16, **kwargs
+) -> tt:
     """
     Learn the phase lookup table from dual phase stepping measurements, piece by piece.
 
@@ -310,7 +325,7 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
     Returns:
     """
     slice_iterations = int(np.ceil(np.maximum(gray_values0.max(), gray_values1.max()) / gray_value_slice_size))
-    phase_response_per_gv = torch.linspace(0.0, 2*np.pi, 256)
+    phase_response_per_gv = torch.linspace(0.0, 2 * np.pi, 256)
 
     for slice_it in range(slice_iterations):
         # Crop to the part of the measurements that we will learn this iteration
@@ -321,13 +336,13 @@ def grow_learn_lut(gray_values0: tt, gray_values1: tt, feedback_measurements: tt
         cropped_gray_values1 = gray_values1[0:crop_index1]
         cropped_feedback_measurements = feedback_measurements[0:crop_index0, 0:crop_index1]
 
-
-        cropped_phase_response_per_gv_init = \
-            learn_lut(gray_values0=cropped_gray_values0,
-                      gray_values1=cropped_gray_values1,
-                      feedback_measurements=cropped_feedback_measurements,
-                      phase_response_per_gv_init=phase_response_per_gv[:gray_value_crop_size],
-                      **kwargs)
+        cropped_phase_response_per_gv_init = learn_lut(
+            gray_values0=cropped_gray_values0,
+            gray_values1=cropped_gray_values1,
+            feedback_measurements=cropped_feedback_measurements,
+            phase_response_per_gv_init=phase_response_per_gv[:gray_value_crop_size],
+            **kwargs,
+        )
 
         phase_response_per_gv[:gray_value_crop_size] = cropped_phase_response_per_gv_init
         phase_response_per_gv[gray_value_crop_size:] = cropped_phase_response_per_gv_init[-1]
