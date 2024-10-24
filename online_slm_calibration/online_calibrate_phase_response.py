@@ -8,7 +8,7 @@ from openwfs.algorithms.troubleshoot import field_correlation
 
 # Internal
 from helper_functions import get_dict_from_hdf5
-from calibration_functions import import_lut, learn_field
+from calibration_functions import grow_learn_field
 from directories import data_folder
 
 
@@ -33,7 +33,7 @@ with h5py.File(filepath_ref) as f:
     ref_dict = get_dict_from_hdf5(f)
 
 # Learn phase response
-lr, phase_response_per_gv_fit, amplitude = learn_field(
+lr, phase_response_per_gv_fit, amplitude = grow_learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.05, iterations=100,
     do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30)
 
