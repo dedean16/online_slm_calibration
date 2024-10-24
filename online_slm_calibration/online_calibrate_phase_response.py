@@ -28,14 +28,28 @@ feedback_meas = torch.tensor(feedback_dict['feedback'])
 gv0 = torch.tensor(feedback_dict['gv_row'] % 256, dtype=torch.int32)
 gv1 = torch.tensor(feedback_dict['gv_col'] % 256, dtype=torch.int32)
 
-# Import reference phase response measurements
+bleach = torch.mean(feedback_meas, 0)
+bleach = torch.linspace(bleach[0], bleach[-1], len(bleach))
+feedback_meas = feedback_meas - bleach.reshape(1, -1)
+#feedback_meas[90,:] = 0.5 * (feedback_meas[89,:]+feedback_meas[91,:])
+#feedback_meas[82,:] = 0.5 * (feedback_meas[81,:]+feedback_meas[83,:])
+# extent = (gv1.min()-0.5, gv1.max()+0.5, gv0.min()-0.5, gv0.max()+0.5)
+# plt.imshow(feedback_meas, extent=extent)
+# plt.show()
+#
+# ff = feedback_meas[torch.flatten(gv1), :]
+# plt.figure()
+# plt.imshow(ff)
+# plt.show()
+
+
 with h5py.File(filepath_ref) as f:
     ref_dict = get_dict_from_hdf5(f)
 
 # Learn phase response
 lr, phase_response_per_gv_fit, amplitude = learn_field(
-    gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.05, iterations=100,
-    do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30)
+    gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.3, iterations=1800,
+    do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30, smooth_loss_factor=0)
 
 print(f'b = {amplitude.mean()}, lr = {lr} (1.0)')
 
@@ -50,3 +64,4 @@ plt.legend()
 plt.subplot(2, 1, 2)
 plt.plot(amplitude, color='C0', label='Amplitude')
 plt.show()
+

@@ -222,19 +222,23 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     """
 
     # Initial guess:
-    # normalize measurements to have mean=1, then subtract the mean
+    # normalize measurements to have std=1, then subtract the mean
     # then initialize a = 1.0 and E=(peak-peak(measurements)/2)^(1/non_linearity)
-    measurements = measurements / measurements.mean() - 1.0
+    measurements = measurements / measurements.std()
+    measurements -= measurements.mean()
     lr = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
     b = (0.5 * (measurements.max() - measurements.min())).pow(1/nonlinearity)
     E = b * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
+    E.detach()
     E.requires_grad_(True)
-    kernel_size = round(3*sigma)*2+1
-    kernel = gaussian_kernel1d(kernel_size, sigma).view(1, 1, -1) + 0j
+    measurements.detach()
+    nonlinearity = torch.tensor(nonlinearity, dtype=torch.float32, requires_grad=True)
 
     # Initialize parameters and optimizer
     params = [
-        {'lr': learning_rate, 'params': [lr, E]}]
+        {'lr': learning_rate, 'params': [lr, E]},
+        {'lr': learning_rate * 0.1, 'params': [nonlinearity]}
+    ]
 
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
     progress_bar = tqdm(total=iterations)
@@ -252,16 +256,11 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         feedback_predicted = model(E, lr)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
-
-        smooth_E = torch.nn.functional.conv1d(E.view(1, 1, -1), kernel, padding=kernel_size//2)
-        window = torch.tensor(window_cosine_edge(E.numel(), kernel_size//2))
-        loss_smooth = smooth_loss_factor * (window * (smooth_E - E).squeeze()).abs().pow(2).mean()
-
+        loss_smooth = smooth_loss_factor * E.diff(n=2).abs().pow(2).mean()
         loss = loss_meas + loss_reg + loss_smooth
 
         # Gradient descent step
         loss.backward()
-        #phase_response_per_gv.grad[0] = 0.0  # Fix phase for gray value 0
         optimizer.step()
         optimizer.zero_grad()
 
@@ -270,12 +269,13 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
             plt.subplot(1, 3, 1)
             plot_phase_response(torch.angle(E))
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f'feedback mse: {loss_meas:.3g}, smoothness mse: {loss_reg:.3g}\nlr: {lr:.3g}, b: {b:.3g}')
+            plt.title(f'feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg:{loss_reg:.3g}\nlr: {lr:.3g}')
             plt.pause(0.01)
 
         progress_bar.update()
 
     # split phase and amplitude, and unwrap phase
+    E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min()) # experimentally
     amplitude = E.abs()
     phase = torch.angle(E)
     dphase = torch.diff(phase)
@@ -285,6 +285,11 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
     if phase[-1] < 0:
         phase = -phase  # ensure phase is increasing
 
+    plt.figure()
+    plt.plot(E.detach().real, E.detach().imag)
+    plt.show()
+
+    print(nonlinearity)
     return lr.item(), phase.detach(), amplitude.detach()
 
 

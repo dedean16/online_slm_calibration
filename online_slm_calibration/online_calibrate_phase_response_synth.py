@@ -13,7 +13,7 @@ from calibration_functions import predict_feedback, grow_learn_lut, learn_field
 
 # === Settings === #
 do_plot = True
-do_end_plot = True
+do_end_plot = False
 N = 2                           # Non-linearity factor. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = PMT is broken :)
 
 noise_level = 0.3
@@ -29,10 +29,11 @@ gv1 = torch.arange(0, 256, 32, dtype=torch.int32)
 
 feedback_meas = predict_feedback(gv0, gv1, a_gt, b_gt, phase_response_per_gv_gt, nonlinearity=N, noise_level=noise_level)
 
+
 lr, phase_response_per_gv_fit, amplitude = learn_field(gray_values0=gv0,
                 gray_values1=gv1,measurements=feedback_meas, nonlinearity=N,
                 learning_rate=0.2, iterations=500, do_plot=do_plot, do_end_plot=do_end_plot,
-                plot_per_its=30, smooth_loss_factor=2.0)
+                plot_per_its=3, smooth_loss_factor=2.0, phase_stroke_init=12 )
 
 print(f'b = {amplitude.mean()} ({b_gt}), lr = {lr} (1.0)')
 
