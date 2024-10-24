@@ -26,7 +26,7 @@ with h5py.File(filepath_measurements, "r") as f:
 
 feedback_meas = torch.tensor(feedback_dict['feedback'])
 gv0 = torch.tensor(feedback_dict['gv_row'] % 256, dtype=torch.int32)
-gv1 = torch.tensor(feedback_dict['gv_col'] % 256, dtype=torch.int32)
+gv1 = torch.tensor(feedback_dict['gv_col'][0:8, :] % 256, dtype=torch.int32)
 
 # Import reference phase response measurements
 with h5py.File(filepath_ref) as f:
@@ -34,8 +34,8 @@ with h5py.File(filepath_ref) as f:
 
 # Learn phase response
 B, phase, amplitude = grow_learn_field(
-    gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.05, iterations=100,
-    do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=30)
+    gray_values0=gv0, gray_values1=gv1, measurements=feedback_meas, nonlinearity=N, learning_rate=0.01, iterations=300,
+    do_plot=do_plot, do_end_plot=do_end_plot, plot_per_its=10, smooth_loss_factor=100.0, balance_factor=100.0, gray_value_slice_size=32)
 
 print(f'b = {amplitude.mean()}, B = {B} (1.0)')
 
@@ -45,7 +45,7 @@ plt.errorbar(ref_dict['gray_values'][0], ref_dict['phase_mean'][0], yerr=ref_dic
              linestyle='--', color='#333333', label='Reference')
 plt.plot(phase, color='C0', label='Predicted')
 plt.xlabel('Gray value')
-plt.ylabel('Phase response')
+plt.ylabel('Phase response (rad)')
 plt.legend()
 plt.subplot(2, 1, 2)
 plt.plot(amplitude, color='C0', label='Amplitude')

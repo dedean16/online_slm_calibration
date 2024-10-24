@@ -289,6 +289,7 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         loss_smooth = smooth_loss_factor * (window * (smooth_E - E).squeeze()).abs().pow(2).mean()
 
         loss = loss_meas + loss_reg + loss_smooth
+        print(f'lm {loss_meas:.3g}, lr {loss_reg:.3g}, ls {loss_smooth:.3g}')
 
         # Gradient descent step
         loss.backward()
@@ -299,7 +300,10 @@ def learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, nonlineari
         if (do_plot and (it % plot_per_its == 0 or it == 0)) or (do_end_plot and it == iterations-1):
             plt.clf()
             plt.subplot(1, 3, 1)
-            plot_phase_response(torch.angle(E))
+            plt.plot(torch.angle(E).detach(), label='$\\phi$')
+            plt.plot(torch.abs(E).detach(), label='$A$')
+            plt.xlabel('gray value')
+            plt.legend()
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
             plt.title(f'feedback mse: {loss_meas:.3g}, smoothness mse: {loss_reg:.3g}\nB: {B:.3g}')
             plt.pause(0.01)
