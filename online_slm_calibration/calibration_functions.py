@@ -1,6 +1,8 @@
 # External 3rd party
+from typing import Tuple
+
 import torch
-from torch import Tensor as tt
+from torch import Tensor as tt, Tensor
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
@@ -204,6 +206,19 @@ def window_cosine_edge(size, edge_width):
 
     return window
 
+def unwrap(phase):
+    ### TODO: The current approach does not guarantee |phase steps| < π. This will work for most practical cases,
+    ### TODO: but should be done recursively to work for any case.
+    ### ??
+    
+    dphase = torch.diff(phase)
+    dphase = torch.where(dphase > np.pi, dphase - 2 * np.pi, dphase)
+    dphase = torch.where(dphase < -np.pi, dphase + 2 * np.pi, dphase)
+    phase = torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
+    if phase[-1] < 0:
+        phase = -phase  # ensure phase is increasing
+    return phase
+
 
 def learn_field(
     *,
@@ -296,13 +311,7 @@ def learn_field(
     # split phase and amplitude, and unwrap phase
     E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())  # experimental
     amplitude = E.abs()
-    phase = torch.angle(E)
-    dphase = torch.diff(phase)
-    dphase = torch.where(dphase > np.pi, dphase - 2 * np.pi, dphase)
-    dphase = torch.where(dphase < -np.pi, dphase + 2 * np.pi, dphase)
-    phase = torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
-    if phase[-1] < 0:
-        phase = -phase  # ensure phase is increasing
+    phase = unwrap(torch.angle(E))
 
     return nonlinearity.item(), lr.item(), phase.detach().numpy(), amplitude.detach().numpy()
 
@@ -310,13 +319,15 @@ def learn_field(
 def grow_learn_lut(
     gray_values0: tt, gray_values1: tt, feedback_measurements: tt, gray_value_slice_size=16, **kwargs
 ) -> tt:
+def grow_learn_field(gray_values0: tt, gray_values1: tt, measurements: tt, gray_value_slice_size=16,
+                     **kwargs) -> tuple[float, Tensor, Tensor]:
     """
     Learn the phase lookup table from dual phase stepping measurements, piece by piece.
 
     Args:
         gray_values0:
         gray_values1: Same as gray_values1, for the second group.
-        feedback_measurements:
+        measurements:
         nonlinearity: Nonlinearity number. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
         iterations: Number of learning iterations.
         do_plot: If True, plot during learning.
@@ -326,15 +337,20 @@ def grow_learn_lut(
     """
     slice_iterations = int(np.ceil(np.maximum(gray_values0.max(), gray_values1.max()) / gray_value_slice_size))
     phase_response_per_gv = torch.linspace(0.0, 2 * np.pi, 256)
+    phase = torch.linspace(0.0, 2*np.pi, 256)
+    amplitude = torch.ones(256)
+    E = amplitude * torch.exp(1j * phase)
+    B = 1.0
 
+    # Learn iteratively larger slices of the measurement data
     for slice_it in range(slice_iterations):
         # Crop to the part of the measurements that we will learn this iteration
-        gray_value_crop_size = (slice_it + 1) * gray_value_slice_size
-        crop_index0 = (gray_values0 < gray_value_crop_size).sum()
-        crop_index1 = (gray_values1 < gray_value_crop_size).sum()
+        c = (slice_it + 1) * gray_value_slice_size
+        crop_index0 = (gray_values0 < c).sum()
+        crop_index1 = (gray_values1 < c).sum()
         cropped_gray_values0 = gray_values0[0:crop_index0]
         cropped_gray_values1 = gray_values1[0:crop_index1]
-        cropped_feedback_measurements = feedback_measurements[0:crop_index0, 0:crop_index1]
+        cropped_feedback_measurements = measurements[0:crop_index0, 0:crop_index1]
 
         cropped_phase_response_per_gv_init = learn_lut(
             gray_values0=cropped_gray_values0,
@@ -343,8 +359,19 @@ def grow_learn_lut(
             phase_response_per_gv_init=phase_response_per_gv[:gray_value_crop_size],
             **kwargs,
         )
+        # Learn with new slice
+        B, cropped_phase, cropped_amplitude = \
+            learn_field(gray_values0=cropped_gray_values0,
+                        gray_values1=cropped_gray_values1,
+                        measurements=cropped_feedback_measurements,
+                        E_init=E[:c],
+                        B_init=B,
+                        **kwargs)
 
-        phase_response_per_gv[:gray_value_crop_size] = cropped_phase_response_per_gv_init
-        phase_response_per_gv[gray_value_crop_size:] = cropped_phase_response_per_gv_init[-1]
+        phase[:c] = cropped_phase
+        phase[c:] = cropped_phase[-1]
+        amplitude[:c] = cropped_amplitude
+        amplitude[c:] = cropped_amplitude[-1]
+        E = amplitude * np.exp(1j * phase)
 
-    return phase_response_per_gv
+    return B, phase, amplitude

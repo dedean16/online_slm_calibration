@@ -5,6 +5,7 @@ import h5py
 
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import learn_field
+from calibration_functions import grow_learn_field
 from directories import data_folder
 
 
