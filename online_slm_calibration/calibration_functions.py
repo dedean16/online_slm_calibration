@@ -24,7 +24,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray):
 
     # locate elements for which gv0 == gv1. These are measured twice and should be equal except for noise and photobleaching.
     gv0 = np.asarray(gray_value0)
-    sym_selection = [np.nonzero(gv0 == gv1)[0].item() for gv1 in gray_value1]
+    sym_selection = [np.nonzero(gv0 == gv1)[0][0].item() for gv1 in gray_value1]
 
     learning_rate = 0.01
     offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
