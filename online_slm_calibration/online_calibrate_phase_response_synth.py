@@ -26,7 +26,7 @@ gv1 = np.arange(0, 256, 32)
 
 measurements = predict_feedback(gv0, gv1, a_gt, b_gt, phase_gt, nonlinearity=settings['nonlinearity'], noise_level=noise_level)
 
-nonlinearity, lr, phase, amplitude = learn_field(gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
+lr, nonlinearity, phase, amplitude = learn_field(gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
 
 print(f'b = {amplitude.mean()} ({b_gt}), B = {lr} (1.0)')
 

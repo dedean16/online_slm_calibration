@@ -14,7 +14,7 @@ settings = {
     "nonlinearity": 2,
     "learning_rate": 0.3,
     "iterations": 1800,
-    "smooth_loss_factor": 0,
+    "smooth_loss_factor": 1.0,
 }
 
 # Import feedback measurements and reference phase response
@@ -33,8 +33,10 @@ with h5py.File(filepath_ref) as f:
     ref_phase_err = ref_dict["phase_std"][0]
 
 # Compensate for photo-bleaching
+measurements = measurements[:, 3:]
+gv1 = gv1[3:]
 m = measurements.flatten(order="F")
-trend = np.polynomial.Polynomial.fit(range(len(m)), m, 2)
+trend = np.polynomial.Polynomial.fit(range(len(m)), m, 1)
 m = m - trend(range(len(m)))
 measurements = m.reshape(measurements.shape, order="F")
 
@@ -54,7 +56,7 @@ plt.show()
 
 
 # Learn phase response
-lr, nl, phase, amplitude = learn_field(
+nl, lr, phase, amplitude = learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings
 )
 

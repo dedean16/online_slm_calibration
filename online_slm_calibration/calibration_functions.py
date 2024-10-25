@@ -275,7 +275,7 @@ def learn_field(
 
     # Initialize parameters and optimizer
     params = [{"lr": learning_rate, "params": [lr, E]}, {"lr": learning_rate * 0.1, "params": [nonlinearity]}]
-    optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
+    optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
     def model(E, lr):
@@ -288,7 +288,7 @@ def learn_field(
         feedback_predicted = model(E, lr)
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (lr - 1.0).abs().pow(2)
-        loss_smooth = smooth_loss_factor * E.diff(n=2).abs().pow(2).mean()
+        loss_smooth = smooth_loss_factor * torch.std(abs(E))
         loss = loss_meas + loss_reg + loss_smooth
 
         # Gradient descent step
