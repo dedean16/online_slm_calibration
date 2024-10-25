@@ -31,6 +31,7 @@ with h5py.File(filepath_ref) as f:
     ref_gray = ref_dict["gray_values"][0]
     ref_phase = ref_dict["phase_mean"][0]
     ref_phase_err = ref_dict["phase_std"][0]
+    ref_amplitude = ref_dict["modulation_depth"][0]
 
 # Compensate for photo-bleaching
 #measurements = measurements[:, 3:]
@@ -48,9 +49,17 @@ print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 plot_results_ground_truth(phase, amplitude, ref_phase)
 
 plt.figure()
-E = amplitude * np.exp(1.0j * phase)
-E_ref = amplitude.mean() * np.exp(1.0j * ref_phase)
-plt.plot(E.real, E.imag)
-plt.plot(E_ref.real, E_ref.imag)
-plt.show()
+amplitude_norm = amplitude / amplitude.mean()
+E = amplitude_norm * np.exp(1.0j * phase)
+ref_amplitude_norm = ref_amplitude / ref_amplitude.mean()
+E_ref = ref_amplitude_norm * np.exp(1.0j * ref_phase)
+plt.plot(E_ref.real, E_ref.imag, label="Reference")
+plt.plot(E.real, E.imag, label="Predicted")
+plt.legend()
 
+plt.figure()
+plt.plot(np.angle(E_ref.conj() * E))
+plt.title('Phase difference Ref-Pred')
+plt.xlabel('Gray value')
+plt.ylabel('$\\Delta\\phi$ (rad)')
+plt.show()
