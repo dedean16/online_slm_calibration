@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import h5py
 
 from helper_functions import get_dict_from_hdf5
-from calibration_functions import learn_field
+from calibration_functions import learn_field, detrend
 from directories import data_folder
 from online_slm_calibration.plot_utilities import plot_results_ground_truth
 
@@ -11,7 +11,7 @@ from online_slm_calibration.plot_utilities import plot_results_ground_truth
 settings = {
     "do_plot": True,
     "plot_per_its": 30,
-    "nonlinearity": 2,
+    "nonlinearity": 2.0,
     "learning_rate": 0.3,
     "iterations": 1800,
     "smooth_loss_factor": 1.0,
@@ -33,26 +33,9 @@ with h5py.File(filepath_ref) as f:
     ref_phase_err = ref_dict["phase_std"][0]
 
 # Compensate for photo-bleaching
-measurements = measurements[:, 3:]
-gv1 = gv1[3:]
-m = measurements.flatten(order="F")
-trend = np.polynomial.Polynomial.fit(range(len(m)), m, 1)
-m = m - trend(range(len(m)))
-measurements = m.reshape(measurements.shape, order="F")
-
-# feedback_meas[90,:] = 0.5 * (feedback_meas[89,:]+feedback_meas[91,:])
-# feedback_meas[82,:] = 0.5 * (feedback_meas[81,:]+feedback_meas[83,:])
-# extent = (gv1.min()-0.5, gv1.max()+0.5, gv0.min()-0.5, gv0.max()+0.5)
-# plt.imshow(feedback_meas, extent=extent)
-# plt.show()
-#
-ff = measurements[gv1, :]
-plt.figure()
-plt.imshow(ff)
-plt.show()
-
-plt.plot(m)
-plt.show()
+#measurements = measurements[:, 3:]
+#gv1 = gv1[3:]
+measurements = detrend(gv0, gv1, measurements)
 
 
 # Learn phase response

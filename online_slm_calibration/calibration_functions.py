@@ -18,6 +18,50 @@ def phase_correlation(phase1, phase2):
     """
     return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
+def detrend(gray_value0, gray_value1, measurements: np.ndarray):
+    m = torch.tensor(measurements.flatten(order="F"))
+    m = m / m.abs().mean()
+
+    # locate elements for which gv0 == gv1. These are measured twice and should be equal except for noise and photobleaching.
+    gv0 = np.asarray(gray_value0)
+    sym_selection = [np.nonzero(gv0 == gv1)[0].item() for gv1 in gray_value1]
+
+    learning_rate = 0.01
+    offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
+    decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
+    t = torch.tensor(range(len(m)))
+    def compensate_bleaching():
+        return (m - offset) * torch.exp(decay * t)
+
+    params = [{"lr": learning_rate, "params": [offset]}, {"lr": learning_rate / len(m), "params": [decay]}]
+    optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
+
+    for it in range(100):
+        c = compensate_bleaching()
+        c = c.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection]
+        loss = (c - c.t()).pow(2).mean() / c.pow(2).mean()
+        loss.backward()
+        optimizer.step()
+        optimizer.zero_grad()
+
+    m = compensate_bleaching().detach().numpy()
+    measurements = m.reshape(measurements.shape, order='F')
+
+    # feedback_meas[90,:] = 0.5 * (feedback_meas[89,:]+feedback_meas[91,:])
+    # feedback_meas[82,:] = 0.5 * (feedback_meas[81,:]+feedback_meas[83,:])
+    # extent = (gv1.min()-0.5, gv1.max()+0.5, gv0.min()-0.5, gv0.max()+0.5)
+    # plt.imshow(feedback_meas, extent=extent)
+    # plt.show()
+    #
+    ff = measurements[sym_selection, :]
+    plt.figure()
+    plt.imshow(ff)
+    plt.show()
+
+    plt.plot(m)
+    plt.show()
+    return measurements
+
 
 def predict_feedback(
     gray_value0, gray_value1, a: tt, b: tt, phase_response_per_gv: tt, nonlinearity, noise_level=0.0
