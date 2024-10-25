@@ -5,7 +5,7 @@ import h5py
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import learn_field
 from directories import data_folder
-
+from online_slm_calibration.plot_utilities import plot_results_ground_truth
 
 # === Settings === #
 settings = {
@@ -60,25 +60,7 @@ lr, nl, phase, amplitude = learn_field(
 
 print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 
-plt.figure()
-plt.subplot(2, 1, 1)
-plt.errorbar(
-    ref_gray,
-    ref_phase,
-    yerr=ref_phase_err,
-    linestyle="--",
-    color="#333333",
-    label="Reference",
-)
-plt.plot(phase, color="C0", label="Predicted")
-plt.xlabel("Gray value")
-plt.ylabel("Phase response")
-plt.legend()
-plt.subplot(2, 1, 2)
-plt.plot(amplitude, color="C0", label="Amplitude")
-plt.xlabel("Gray value")
-plt.ylabel("Amplitude response")
-plt.show()
+plot_results_ground_truth(phase, amplitude, ref_phase)
 
 plt.figure()
 E = amplitude * np.exp(1.0j * phase)
