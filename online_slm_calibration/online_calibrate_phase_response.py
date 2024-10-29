@@ -3,17 +3,17 @@ import matplotlib.pyplot as plt
 import h5py
 
 from helper_functions import get_dict_from_hdf5
-from calibration_functions import learn_field, detrend
+from calibration_functions import learn_field, detrend, arcsin_phase_retrieve
 from directories import data_folder
 from online_slm_calibration.plot_utilities import plot_results_ground_truth
 
 # === Settings === #
 settings = {
     "do_plot": True,
-    "plot_per_its": 30,
+    "plot_per_its": 1500,
     "nonlinearity": 2.0,
-    "learning_rate": 0.3,
-    "iterations": 1800,
+    "learning_rate": 0.1,
+    "iterations": 3000,
     "smooth_loss_factor": 1.0,
 }
 
@@ -38,6 +38,11 @@ with h5py.File(filepath_ref) as f:
 #gv1 = gv1[3:]
 measurements = detrend(gv0, gv1, measurements)
 
+plt.figure()
+plt.plot(measurements[:, 0])
+plt.title('Measurements 0')
+plt.show()
+
 
 # Learn phase response
 nl, lr, phase, amplitude = learn_field(
@@ -47,6 +52,15 @@ nl, lr, phase, amplitude = learn_field(
 print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 
 plot_results_ground_truth(phase, amplitude, ref_phase)
+
+phase_arcsin = arcsin_phase_retrieve(measurements[:, 0], nl, [-1.348, -1.185], [0, 133, 164, 182, 201])
+
+plt.figure()
+plt.plot(phase, label='Fit')
+plt.plot(ref_phase, label='Ref')
+plt.plot(phase_arcsin, label='arcsin')
+plt.legend()
+plt.show()
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()

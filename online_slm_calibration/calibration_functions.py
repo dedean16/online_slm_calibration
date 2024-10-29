@@ -18,6 +18,31 @@ def phase_correlation(phase1, phase2):
     """
     return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
+
+def arcsin_phase_retrieve(measurements, nonlinearity, minmax, flips):
+    """
+    Retrieve phase like in [1] using an arcsin.
+
+    Args:
+        measurements:
+        nonlinearity:
+
+    Returns:
+        phase
+
+    [1] S. Reichelt, 2013, doi: 10.1364/AO.52.002610.
+    """
+    measurements_norm = np.clip((measurements - minmax[0]) / (minmax[1] - minmax[0]), a_min=0.0, a_max=1.0)
+    phase_with_flips = 2 * np.arcsin(measurements_norm ** (1 / (2*nonlinearity)))
+    plt.plot(measurements_norm)
+    dphase = np.diff(phase_with_flips)
+    dfactors = np.ones_like(dphase)
+    for i in range(len(flips)):
+        dfactors[flips[i]:] *= -1
+    phase = np.cumsum(dphase * dfactors)
+    return phase
+
+
 def detrend(gray_value0, gray_value1, measurements: np.ndarray):
     m = torch.tensor(measurements.flatten(order="F"))
     m = m / m.abs().mean()
@@ -56,10 +81,12 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray):
     ff = measurements[sym_selection, :]
     plt.figure()
     plt.imshow(ff)
-    plt.show()
+    plt.title('ff')
 
+    plt.figure()
     plt.plot(m)
-    plt.show()
+    plt.pause(0.1)
+    plt.title('m')
     return measurements
 
 
