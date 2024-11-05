@@ -71,6 +71,7 @@ print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 
 plot_results_ground_truth(phase, amplitude, gv0, ref_phase)
 
+
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()
 E = amplitude_norm * np.exp(1.0j * phase)
