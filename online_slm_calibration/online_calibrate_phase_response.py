@@ -13,8 +13,9 @@ settings = {
     "plot_per_its": 30,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
-    "iterations": 1800,
+    "iterations": 2000,
     "smooth_loss_factor": 1.0,
+    "balance_factor": 1.0,
 }
 
 # Import feedback measurements and reference phase response
@@ -23,6 +24,9 @@ filepath_measurements = data_folder.joinpath("slm_calibration_signal_feedback.ma
 with h5py.File(filepath_measurements, "r") as f:
     feedback_dict = get_dict_from_hdf5(f)
     measurements = feedback_dict["feedback"]
+    # # Uncomment to hide outliers
+    # measurements[165, :] = (measurements[166, :] + measurements[164, :]) / 2
+    # measurements[173, :] = (measurements[174, :] + measurements[172, :]) / 2
     gv0 = feedback_dict["gv_row"].astype(int).ravel()
     gv1 = feedback_dict["gv_col"].astype(int).ravel()
     gv0 = np.asarray((

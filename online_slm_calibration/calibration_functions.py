@@ -96,16 +96,18 @@ def predict_feedback(
         return feedback_clean + noise_level * torch.randn(feedback_clean.shape)
 
 
-def plot_phase_response(phase_response_per_gv):
-    plt.plot(phase_response_per_gv.detach())
+def plot_field_response(field_response_per_gv):
+    plt.plot(field_response_per_gv.detach().abs(), label='$A$')
+    plt.plot(field_response_per_gv.detach().angle(), label='$\\phi$')
     plt.xlabel("Gray value")
-    plt.ylabel("Phase (rad)")
-    plt.title("Predicted phase response")
+    plt.ylabel("Phase (rad) | Relative amplitude")
+    plt.legend()
+    plt.title("Predicted field response")
 
 
 def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
     plt.subplot(1, 3, 2)
-    extent = (gray_values1.min(), gray_values1.max(), gray_values0.min(), gray_values0.max())
+    extent = (gray_values1.min()-0.5, gray_values1.max()+0.5, gray_values0.max()+0.5, gray_values0.min()-0.5)
     vmin = torch.minimum(feedback_measurements.min(), feedback.min())
     vmax = torch.maximum(feedback_measurements.max(), feedback.max())
     plt.imshow(feedback_measurements.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
@@ -198,7 +200,7 @@ def learn_lut(
         if do_plot and (it % plot_per_its == 0 or it == 0):
             plt.clf()
             plt.subplot(1, 3, 1)
-            plot_phase_response(phase_response_per_gv)
+            plot_field_response(phase_response_per_gv)
             plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
             plt.title(f"feedback mse: {feedback_mse:.3g}, smoothness mse: {smoothness_mse:.3g}\na: {a:.3g}, b: {b:.3g}")
             plt.pause(0.01)
@@ -212,7 +214,7 @@ def learn_lut(
             plt.figure(figsize=(13, 4))
         plt.subplot(1, 3, 1)
 
-        plot_phase_response(phase_response_per_gv)
+        plot_field_response(phase_response_per_gv)
         plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
         plt.pause(0.1)
 
@@ -300,7 +302,7 @@ def learn_field(
         smooth_loss_factor: Factor for multiplying smoothness loss.
 
     Returns:
-        nonlinearity, lr, phase[i], ampltude[i]
+        nonlinearity, lr, phase[i], amplitude[i]
     """
 
     # Initial guess:
@@ -346,7 +348,7 @@ def learn_field(
             else:
                 plt.clf()
             plt.subplot(1, 3, 1)
-            plot_phase_response(torch.angle(E))
+            plot_field_response(E)
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
             plt.title(f"feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg:{loss_reg:.3g}\nlr: {lr:.3g}")
             plt.pause(0.01)
