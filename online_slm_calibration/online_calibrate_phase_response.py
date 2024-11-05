@@ -5,12 +5,17 @@ import h5py
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import learn_field, detrend
 from directories import data_folder
-from online_slm_calibration.plot_utilities import plot_results_ground_truth
+from online_slm_calibration.plot_utilities import plot_results_ground_truth, plot_result_feedback_fit
+
+
+plt.rcParams.update({'font.size': 14})
+
 
 # === Settings === #
 settings = {
     "do_plot": True,
-    "plot_per_its": 30,
+    "do_end_plot": True,
+    "plot_per_its": 100,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
     "iterations": 2000,
@@ -70,7 +75,6 @@ nl, lr, phase, amplitude = learn_field(
 print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 
 plot_results_ground_truth(phase, amplitude, gv0, ref_phase)
-
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()

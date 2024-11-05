@@ -12,7 +12,7 @@ from tqdm import tqdm
 from openwfs.algorithms.troubleshoot import field_correlation
 
 # Internal
-from plot_utilities import plot_field_response, plot_feedback_fit
+from plot_utilities import plot_field_response, plot_feedback_fit, plot_result_feedback_fit
 
 
 def phase_correlation(phase1, phase2):
@@ -21,7 +21,7 @@ def phase_correlation(phase1, phase2):
     """
     return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
-def detrend(gray_value0, gray_value1, measurements: np.ndarray):
+def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     m = torch.tensor(measurements.flatten(order="F"))
     m = m / m.abs().mean()
 
@@ -50,19 +50,16 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray):
     m = compensate_bleaching().detach().numpy()
     measurements = m.reshape(measurements.shape, order='F')
 
-    # feedback_meas[90,:] = 0.5 * (feedback_meas[89,:]+feedback_meas[91,:])
-    # feedback_meas[82,:] = 0.5 * (feedback_meas[81,:]+feedback_meas[83,:])
-    # extent = (gv1.min()-0.5, gv1.max()+0.5, gv0.min()-0.5, gv0.max()+0.5)
-    # plt.imshow(feedback_meas, extent=extent)
-    # plt.show()
-    #
     ff = measurements[sym_selection, :]
-    plt.figure()
-    plt.imshow(ff)
-    plt.show()
 
-    plt.plot(m)
-    plt.show()
+    if do_plot:
+        plt.figure()
+        plt.imshow(ff)
+        plt.show()
+
+        plt.plot(m)
+        plt.show()
+
     return measurements
 
 
@@ -195,6 +192,7 @@ def learn_lut(
 
         plot_field_response(phase_response_per_gv)
         plot_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
+        plot_result_feedback_fit(feedback_measurements, feedback_predicted, gray_values0, gray_values1)
         plt.pause(0.1)
 
     return phase_response_per_gv.detach()
@@ -254,6 +252,7 @@ def learn_field(
     nonlinearity=1,
     iterations: int = 50,
     do_plot: bool = False,
+    do_end_plot: bool = False,
     plot_per_its: int = 10,
     learning_rate=0.1,
     phase_stroke_init=2.5 * torch.pi,
@@ -338,6 +337,11 @@ def learn_field(
     E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())  # experimental
     amplitude = E.abs()
     phase = unwrap(torch.angle(E))
+
+    if do_plot and do_end_plot:
+        plt.figure(figsize=(14, 4.3))
+        plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
+        plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
 
     return nonlinearity.item(), lr.item(), phase.detach().numpy(), amplitude.detach().numpy()
 

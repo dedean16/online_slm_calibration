@@ -38,3 +38,30 @@ def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values
     plt.imshow(feedback.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
     plt.title("Predicted feedback")
     plt.colorbar()
+
+
+def plot_result_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
+    extent = (gray_values1.min()-0.5, gray_values1.max()+0.5, gray_values0.max()+0.5, gray_values0.min()-0.5)
+    vmin = torch.minimum(feedback_measurements.min(), feedback.min())
+    vmax = torch.maximum(feedback_measurements.max(), feedback.max())
+
+    plt.subplot(1, 3, 1)
+    plt.imshow(feedback_measurements.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
+    plt.title("a. Measured signal power")
+    plt.xlabel('$g_B$')
+    plt.ylabel('$g_A$')
+    plt.colorbar()
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(feedback.detach(), extent=extent, interpolation="nearest", vmin=vmin, vmax=vmax)
+    plt.title("b. Fit signal power")
+    plt.xlabel('$g_B$')
+    plt.ylabel('$g_A$')
+    plt.colorbar()
+
+    plt.subplot(1, 3, 3)
+    plt.imshow(feedback_measurements.detach() - feedback.detach(), extent=extent, interpolation="nearest")
+    plt.title("c. Difference")
+    plt.xlabel('$g_B$')
+    plt.ylabel('$g_A$')
+    plt.colorbar()
