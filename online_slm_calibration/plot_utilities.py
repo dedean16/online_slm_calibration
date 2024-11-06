@@ -1,18 +1,32 @@
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 
 
-def plot_results_ground_truth(phase, amplitude, gray_values, phase_gt):
-    phase = phase - phase[50] + phase_gt[50]
-    plt.figure()
+def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, phase_ref, phase_ref_err, amplitude_ref):
+    phase = phase - phase[50] + phase_ref[50]
+
+    plt.figure(figsize=(6, 8))
+    plt.subplots_adjust(left=0.20, hspace=0.35, top=0.95, bottom=0.08)
+
     plt.subplot(2, 1, 1)
-    plt.plot(phase_gt, color='C0', label='Ground truth')
-    plt.plot(gray_values, phase, '+', color='C1', label='Predicted')
+    plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', label='Reference')      # plot phase with std error
+    plt.plot(gray_values, phase, '+', color='C1', label='Our fit')
     plt.xlabel('Gray value')
-    plt.ylabel('Phase response')
+    plt.ylabel('Phase')
+    plt.title('a. Phase response')
     plt.legend()
+
     plt.subplot(2, 1, 2)
-    plt.plot(gray_values, amplitude, '.', color='C0', label='Amplitude')
+    rel_amplitude_ref = amplitude_ref / amplitude_ref.mean()
+    rel_amplitude = amplitude / amplitude.mean()
+    plt.plot(rel_amplitude_ref, color='C0', label='Reference')
+    plt.plot(gray_values, rel_amplitude, '+', color='C1', label='Our fit')
+    plt.xlabel('Gray value')
+    plt.ylabel('Normalized amplitude')
+    plt.ylim((0, 1.1 * np.maximum(rel_amplitude.max(), rel_amplitude_ref.max())))
+    plt.title('b. Normalized amplitude response')
+    plt.legend()
     plt.show()
 
 
@@ -60,8 +74,8 @@ def plot_result_feedback_fit(feedback_measurements, feedback, gray_values0, gray
     plt.colorbar()
 
     plt.subplot(1, 3, 3)
-    plt.imshow(feedback_measurements.detach() - feedback.detach(), extent=extent, interpolation="nearest")
-    plt.title("c. Difference")
+    plt.imshow((feedback_measurements.detach() - feedback.detach()).abs(), extent=extent, interpolation="nearest")
+    plt.title("c. Absolute difference")
     plt.xlabel('$g_B$')
     plt.ylabel('$g_A$')
     plt.colorbar()

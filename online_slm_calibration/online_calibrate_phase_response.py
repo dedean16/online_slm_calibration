@@ -15,7 +15,7 @@ plt.rcParams.update({'font.size': 14})
 settings = {
     "do_plot": True,
     "do_end_plot": True,
-    "plot_per_its": 100,
+    "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
     "iterations": 2000,
@@ -74,7 +74,7 @@ nl, lr, phase, amplitude = learn_field(
 
 print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
 
-plot_results_ground_truth(phase, amplitude, gv0, ref_phase)
+plot_results_ground_truth(gv0, phase, amplitude, ref_gray, ref_phase, ref_phase_err, ref_amplitude)
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()
