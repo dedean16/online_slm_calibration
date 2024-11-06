@@ -72,7 +72,7 @@ nl, lr, phase, amplitude = learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings
 )
 
-print(f"lr = {lr} (1.0), nl = {nl} ({settings['nonlinearity']})")
+print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
 
 plot_results_ground_truth(gv0, phase, amplitude, ref_gray, ref_phase, ref_phase_err, ref_amplitude)
 
