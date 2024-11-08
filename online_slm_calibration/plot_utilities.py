@@ -6,10 +6,10 @@ from matplotlib import pyplot as plt
 def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, phase_ref, phase_ref_err, amplitude_ref):
     phase = phase - phase[50] + phase_ref[50]
 
-    plt.figure(figsize=(6, 8))
-    plt.subplots_adjust(left=0.20, hspace=0.35, top=0.95, bottom=0.08)
+    plt.figure(figsize=(9, 8))
+    plt.subplots_adjust(left=0.09, right=0.96, hspace=0.35, wspace=0.35, top=0.95, bottom=0.08)
 
-    plt.subplot(2, 1, 1)
+    plt.subplot(2, 2, 1)
     plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', label='Reference')      # plot phase with std error
     plt.plot(gray_values, phase, '+', color='C1', label='Our fit')
     plt.xlabel('Gray value')
@@ -17,7 +17,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
     plt.title('a. Phase response')
     plt.legend()
 
-    plt.subplot(2, 1, 2)
+    plt.subplot(2, 2, 2)
     rel_amplitude_ref = amplitude_ref / amplitude_ref.mean()
     rel_amplitude = amplitude / amplitude.mean()
     plt.plot(rel_amplitude_ref, color='C0', label='Reference')
@@ -27,6 +27,27 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
     plt.ylim((0, 1.1 * np.maximum(rel_amplitude.max(), rel_amplitude_ref.max())))
     plt.title('b. Normalized amplitude response')
     plt.legend()
+
+    # With the current measurements, there are some deviations due to the actual gray values used
+    plt.subplot(2, 2, 3)
+    plt.plot(abs(phase[:-7] - phase_ref[7:]), color='red')
+    plt.xlabel('Gray value')
+    plt.ylabel('Phase difference (rad)')
+    plt.title('c. Phase error')
+
+    plt.subplot(2, 2, 4)
+    plt.plot(abs(rel_amplitude - rel_amplitude_ref)[:-3], color='red')
+    plt.xlabel('Gray value')
+    plt.ylabel('Normalized amplitude difference')
+    plt.title('d. Normalized amplitude error')
+
+    plt.figure()
+    plt.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
+    plt.plot(np.diff(phase_ref)[:-3])
+    plt.title('Diff')
+    plt.xlabel('Gray level')
+    plt.ylabel('$d\\phi/dg$')
+
     plt.show()
 
 
