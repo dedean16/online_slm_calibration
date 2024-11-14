@@ -7,9 +7,9 @@ import scipy
 import matplotlib.pyplot as plt
 from serial.tools import list_ports
 
+from openwfs import Detector, PhaseSLM
 from openwfs import Processor
 from openwfs.devices import ScanningMicroscope, SLM
-from openwfs.algorithms.troubleshoot import contrast_enhancement
 
 
 def get_com_by_vid_pid(vid: int, pid: int):
@@ -196,41 +196,27 @@ def converge_parking_spot(shutter, image_reader: Processor, scanner: ScanningMic
     return (left, top, scanner.width, scanner.height), imgs
 
 
-def measure_contrast_enhancement(shutter, reader: Processor, scanner: ScanningMicroscope, slm: SLM, phase_pattern: nd) \
-        -> Dict:
-    """
-    Measure contrast enhancement.
+def inline_calibrate(feedback: Detector, slm: PhaseSLM, n_x=4, n_y=4, gray_values1=None, gray_values2=None):
+    if gray_values1 is None:
+        gray_values1 = np.arange(0, 255)
 
-    Args:
-        shutter: Object that controls the shutter by setting the open property.
-        scanner: Object that controls the laser scanner.
-        reader: Processor that reads the laser scanner. May be the laser scanner itself or a post processing Processor.
-        slm: Spatial light modulator object.
-        phase_pattern: Phases to display on the SLM.
+    if gray_values2 is None:
+        gray_values2 = np.arange(0, 255, 16)
 
-    Returns:
-        img_flat_wf: Image with flat wavefront.
-        img_shaped_wf: Image with shaped wavefront.
-        contrast_enhancement: Unbiased contrast enhancement with given phase pattern.
-    """
-    # Noise measurement
-    shutter.open = False
-    noise = reader.read()
+    # Create checkerboard phase mask
+    y_check = np.arange(n_y).reshape((n_y, 1))
+    x_check = np.arange(n_x).reshape((1, n_x))
+    checkerboard = np.mod(x_check + y_check, 2)
 
-    # Flat wavefront
-    shutter.open = True
-    slm.set_phases(0)
-    img_flat_wf = reader.read()
+    data_shape = feedback.data_shape
+    frames = np.zeros((data_shape[0], data_shape[1], len(gray_values1), len(gray_values2)))
 
-    # Shaped wavefront
-    slm.set_phases(phase_pattern)
-    img_shaped_wf = reader.read()
-    shutter.open = False
+    for i2, phase2 in enumerate(gray_values2):
+        for i1, phase1 in enumerate(gray_values1):
+            phase_pattern = phase1 * checkerboard + phase2 * (1-checkerboard)
+            slm.set_phases(phase_pattern)
+            slm.update()
 
-    contrast_results = {
-        'img_flat_wf': img_flat_wf,
-        'img_shaped_wf': img_shaped_wf,
-        'contrast_enhancement': contrast_enhancement(img_shaped_wf, img_flat_wf, noise),
-    }
+            frames[:, :, i1, i2] = feedback.read()
 
-    return contrast_results
+    return frames
