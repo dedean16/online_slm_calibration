@@ -1,16 +1,16 @@
 [tool.poetry]
 name = "online-slm-calibration"
-version = "0.1.0"
+version = "0.2.0"
 description = ""
 authors = ["Daniel Cox <danielcox16@hotmail.com>"]
 readme = "README.rst"
 
 [tool.poetry.dependencies]
 python = "~3.11"
-torch = "~2.3"
+torch = "^2.5"
 matplotlib = "^3.8.3"
 numpy = "^1.26.4"
-openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "6334c635ce9425ebf0efdcb27b8f0cac6fc7afbe" }
+openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "fe1dea7d99cf980bc48ce99f0801f17d6822197a" }
 tqdm = "^4.66.2"
 h5py = "~3.11.0"
 
