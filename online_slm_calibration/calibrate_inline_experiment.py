@@ -4,7 +4,6 @@ Calibrate the SLM using a new inline measurement with non-linear fitting analysi
 Note: When newly running this script, make sure the defined file and folder paths are valid, and update if required.
 """
 # Built-in
-import os
 import time
 from pathlib import Path
 
@@ -12,7 +11,6 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.units as u
-import h5py
 from tqdm import tqdm
 from zaber_motion import Units
 from zaber_motion.ascii import Connection
