@@ -13,6 +13,7 @@ numpy = "^1.26.4"
 openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "fe1dea7d99cf980bc48ce99f0801f17d6822197a" }
 tqdm = "^4.66.2"
 h5py = "~3.11.0"
+gitpython = "^3.1.43"
 
 
 [build-system]
