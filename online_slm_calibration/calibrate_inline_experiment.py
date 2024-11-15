@@ -198,7 +198,7 @@ with (Connection.open_serial_port(comport) as connection):            # Open con
 
     # Repeat experiment on different locations. Move with Zaber stage.
     total_steps = stage_settings['num_steps_axis1'] * stage_settings['num_steps_axis2'] * len(gray_values1) * len(gray_values2)
-    progress_bar = tqdm(colour='blue', total=total_steps, ncols=80)
+    progress_bar = tqdm(colour='blue', total=total_steps, ncols=90)
 
     for a1 in range(stage_settings['num_steps_axis1']):             # Loop over stage axis 1
         for a2 in range(stage_settings['num_steps_axis2']):         # Loop over stage axis 2
