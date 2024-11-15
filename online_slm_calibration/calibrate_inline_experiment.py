@@ -197,7 +197,7 @@ with (Connection.open_serial_port(comport) as connection):            # Open con
     axis2_start_position = axis2.get_position()
 
     # Repeat experiment on different locations. Move with Zaber stage.
-    total_steps = stage_settings['num_steps_axis1'] * stage_settings['num_steps_axis2']
+    total_steps = stage_settings['num_steps_axis1'] * stage_settings['num_steps_axis2'] * len(gray_values1) * len(gray_values2)
     progress_bar = tqdm(colour='blue', total=total_steps, ncols=60)
 
     for a1 in range(stage_settings['num_steps_axis1']):             # Loop over stage axis 1
@@ -215,7 +215,8 @@ with (Connection.open_serial_port(comport) as connection):            # Open con
             shutter.open = True
             slm.set_phases(0)
 
-            frames = inline_calibrate(feedback=reader, slm=slm, gray_values1=gray_values1, gray_values2=gray_values2,
+            frames = inline_calibrate(feedback=reader, slm=slm,
+                                      gray_values1=gray_values1, gray_values2=gray_values2,
                                       progress_bar=progress_bar, progress_bar_suffix=progress_bar_suffix)
 
             shutter.open = False
