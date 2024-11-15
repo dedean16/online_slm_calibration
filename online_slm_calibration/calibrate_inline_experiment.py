@@ -26,13 +26,13 @@ from experiment_helper_classes import RandomSLMShutter, OffsetRemover
 from experiment_helper_functions import (autodelay_scanner, converge_parking_spot, park_beam, get_com_by_vid_pid,
                                          inline_calibrate)
 from online_slm_calibration.helper_functions import gitinfo
-from online_slm_calibration.directories import data_folder
+from online_slm_calibration.directories import local_data
 
 
 # ========== Settings ========== #
 
 # Save filepath and filename prefix
-save_path = Path(data_folder)
+save_path = Path(local_data)
 filename_prefix = 'inline-slm-calibration_'
 
 do_quick_test = False
