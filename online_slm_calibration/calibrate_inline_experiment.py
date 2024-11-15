@@ -198,14 +198,14 @@ with (Connection.open_serial_port(comport) as connection):            # Open con
 
     # Repeat experiment on different locations. Move with Zaber stage.
     total_steps = stage_settings['num_steps_axis1'] * stage_settings['num_steps_axis2'] * len(gray_values1) * len(gray_values2)
-    progress_bar = tqdm(colour='blue', total=total_steps, ncols=60)
+    progress_bar = tqdm(colour='blue', total=total_steps, ncols=80)
 
     for a1 in range(stage_settings['num_steps_axis1']):             # Loop over stage axis 1
         for a2 in range(stage_settings['num_steps_axis2']):         # Loop over stage axis 2
             progress_bar_suffix = f'axes: {a1 + 1}/{stage_settings["num_steps_axis1"]},' \
                 + f' {a2+1}/{stage_settings["num_steps_axis2"]}'
 
-            print('Start converging to parking spot')
+            print('\nStart converging to parking spot')
             park_location, park_imgs = converge_parking_spot(shutter=shutter, image_reader=reader,
                                                              scanner=reader.source, **park_kwargs)
             print(f'Beam parking spot at {park_location}')
@@ -224,7 +224,7 @@ with (Connection.open_serial_port(comport) as connection):            # Open con
 
             # Save results
             # TODO: switch to HDF5 and/or json
-            print('Save...')
+            print('\nSave...')
             park_result = {
                 'location': park_location,
                 'imgs': park_imgs,

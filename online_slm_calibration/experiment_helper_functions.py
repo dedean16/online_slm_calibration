@@ -226,7 +226,7 @@ def inline_calibrate(feedback: Detector, slm: SLM | MockSLM, n_x=4, n_y=4, gray_
             frames[:, :, i1, i2] = feedback.read()
 
             if progress_bar is not None:
-                progress_bar.set_description(desc=progress_bar_suffix + f', gv1={gv1}, gv2={gv2}')
+                progress_bar.set_description(desc=progress_bar_suffix + f'; gv1={gv1}, gv2={gv2}')
                 progress_bar.update()
 
     return frames
