@@ -144,20 +144,6 @@ def window_cosine_edge(size, edge_width):
     return window
 
 
-def unwrap(phase):
-    ### TODO: The current approach does not guarantee |phase steps| < π. This will work for most practical cases,
-    ### TODO: but should be done recursively to work for any case.
-    ### ??
-    
-    dphase = torch.diff(phase)
-    dphase = torch.where(dphase > np.pi, dphase - 2 * np.pi, dphase)
-    dphase = torch.where(dphase < -np.pi, dphase + 2 * np.pi, dphase)
-    phase = torch.cat((torch.tensor([0]), torch.cumsum(dphase, dim=0)), dim=0)
-    if phase[-1] < 0:
-        phase = -phase  # ensure phase is increasing
-    return phase
-
-
 def learn_field(
     *,
     gray_values0,
@@ -250,7 +236,7 @@ def learn_field(
     # split phase and amplitude, and unwrap phase
     E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())  # experimental
     amplitude = E.abs()
-    phase = unwrap(torch.angle(E))
+    phase = np.unwrap(torch.angle(E))
 
     if do_plot and do_end_plot:
         plt.figure(figsize=(14, 4.3))
