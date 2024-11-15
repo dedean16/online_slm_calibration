@@ -2,6 +2,7 @@
 Calibrate the SLM using a new inline measurement with non-linear fitting analysis.
 
 Note: When newly running this script, make sure the defined file and folder paths are valid, and update if required.
+Some folders from directories.py are used.
 """
 # Built-in
 import time
