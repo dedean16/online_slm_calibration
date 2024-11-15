@@ -1,15 +1,20 @@
-from typing import Tuple, Dict
+# Built-in
+from typing import Tuple
 
+# External (3rd party)
 import numpy as np
 from numpy import ndarray as nd
 from numpy.fft import fft, ifft
 import scipy
 import matplotlib.pyplot as plt
 from serial.tools import list_ports
+from tqdm import tqdm
 
-from openwfs import Detector, PhaseSLM
+# External (ours)
+from openwfs import Detector
 from openwfs import Processor
 from openwfs.devices import ScanningMicroscope, SLM
+from openwfs.simulation import SLM as MockSLM
 
 
 def get_com_by_vid_pid(vid: int, pid: int):
@@ -196,7 +201,8 @@ def converge_parking_spot(shutter, image_reader: Processor, scanner: ScanningMic
     return (left, top, scanner.width, scanner.height), imgs
 
 
-def inline_calibrate(feedback: Detector, slm: PhaseSLM, n_x=4, n_y=4, gray_values1=None, gray_values2=None):
+def inline_calibrate(feedback: Detector, slm: SLM | MockSLM, n_x=4, n_y=4, gray_values1=None, gray_values2=None,
+                     progress_bar=None, progress_bar_suffix: str = ''):
     if gray_values1 is None:
         gray_values1 = np.arange(0, 255)
 
@@ -209,14 +215,18 @@ def inline_calibrate(feedback: Detector, slm: PhaseSLM, n_x=4, n_y=4, gray_value
     checkerboard = np.mod(x_check + y_check, 2)
 
     data_shape = feedback.data_shape
-    frames = np.zeros((data_shape[0], data_shape[1], len(gray_values1), len(gray_values2)))
+    frames = np.zeros(shape=(data_shape[0], data_shape[1], len(gray_values1), len(gray_values2)))
 
-    for i2, phase2 in enumerate(gray_values2):
-        for i1, phase1 in enumerate(gray_values1):
-            phase_pattern = phase1 * checkerboard + phase2 * (1-checkerboard)
-            slm.set_phases(phase_pattern)
+    # Dual gray value stepping
+    for i2, gv2 in enumerate(gray_values2):
+        for i1, gv1 in enumerate(gray_values1):
+            gv_pattern = gv1 * checkerboard + gv2 * (1 - checkerboard)
+            slm.set_phases_8bit(gv_pattern)
             slm.update()
-
             frames[:, :, i1, i2] = feedback.read()
+
+            if isinstance(progress_bar, tqdm):
+                progress_bar.set_description(desc=progress_bar_suffix + f', gv1={gv1}, gv2={gv2}')
+                progress_bar.update()
 
     return frames

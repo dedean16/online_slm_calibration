@@ -16,7 +16,6 @@ from zaber_motion import Units
 from zaber_motion.ascii import Connection
 
 # External (ours)
-from openwfs.processors import SingleRoi
 from openwfs.devices import ScanningMicroscope, Gain, SLM, Axis
 from openwfs.devices.galvo_scanner import InputChannel
 from openwfs.utilities import Transform
@@ -24,7 +23,8 @@ from openwfs.utilities import Transform
 # Internal
 from filters import DigitalNotchFilter
 from experiment_helper_classes import RandomSLMShutter, OffsetRemover
-from experiment_helper_functions import autodelay_scanner, converge_parking_spot, park_beam, get_com_by_vid_pid
+from experiment_helper_functions import (autodelay_scanner, converge_parking_spot, park_beam, get_com_by_vid_pid,
+                                         inline_calibrate)
 from online_slm_calibration.helper_functions import gitinfo
 from online_slm_calibration.directories import data_folder
 
@@ -35,13 +35,33 @@ from online_slm_calibration.directories import data_folder
 save_path = Path(data_folder)
 filename_prefix = 'inline-slm-calibration_'
 
+do_quick_test = False
 
-stage_settings = {
-    'settle_time': 60 * u.s,
-    'step_size': 150 * u.um,
-    'num_steps_axis1': 3,
-    'num_steps_axis2': 3,
-}
+if not do_quick_test:
+    # Sample stage settings
+    stage_settings = {
+        'settle_time': 60 * u.s,
+        'step_size': 150 * u.um,
+        'num_steps_axis1': 3,
+        'num_steps_axis2': 3,
+    }
+
+    # SLM gray values to calibrate
+    gray_values1 = range(256)
+    gray_values2 = range(0, 256, 16)
+
+else:
+    # Sample stage settings
+    stage_settings = {
+        'settle_time': 1 * u.s,
+        'step_size': 100 * u.um,
+        'num_steps_axis1': 2,
+        'num_steps_axis2': 1,
+    }
+
+    # SLM gray values to calibrate
+    gray_values1 = range(0, 256, 8)
+    gray_values2 = range(0, 256, 64)
 
 # PMT Amplifier
 signal_gain = 0.6 * u.V
@@ -94,12 +114,6 @@ park_kwargs = {
     'park_to_one_pixel': False,
 }
 
-roi_kwargs = {
-    'radius': 15,
-    'pos': (16, 16),
-    'mask_type': 'square',
-}
-
 
 # ====== Prepare hardware ====== #
 print('Start hardware initialization...')
@@ -133,7 +147,6 @@ scanner_with_offset.zoom = scanner_props['zoom']
 
 # Define Processor that fetches data from scanner and removes offset and ROI detector
 reader = OffsetRemover(source=scanner_with_offset, offset=2 ** 15, dtype_out='float64')
-roi = SingleRoi(reader, **roi_kwargs)
 
 # SLM
 slm_shape = (slm_props['height_pix'], slm_props['height_pix'])
@@ -171,7 +184,7 @@ comport = get_com_by_vid_pid(vid=0x2939, pid=0x495b)                # Get COM-po
 
 
 # ========= Main measurements ========= #
-with Connection.open_serial_port(comport) as connection:            # Open connection with Zaber stage
+with (Connection.open_serial_port(comport) as connection):            # Open connection with Zaber stage
     # Zaber stage initialization
     connection.enable_alerts()
     device_list = connection.detect_devices()
@@ -188,22 +201,21 @@ with Connection.open_serial_port(comport) as connection:            # Open conne
 
     for a1 in range(stage_settings['num_steps_axis1']):             # Loop over stage axis 1
         for a2 in range(stage_settings['num_steps_axis2']):         # Loop over stage axis 2
-            print(f'\nStart measurement at axes pos. {a1}/{stage_settings["num_steps_axis1"]}, '
-                  + f'{a2}/{stage_settings["num_steps_axis2"]}')
+            progress_bar_suffix = f'axes: {a1 + 1}/{stage_settings["num_steps_axis1"]},' \
+                + f' {a2+1}/{stage_settings["num_steps_axis2"]}'
 
             print('Start converging to parking spot')
             park_location, park_imgs = converge_parking_spot(shutter=shutter, image_reader=reader,
                                                              scanner=reader.source, **park_kwargs)
             print(f'Beam parking spot at {park_location}')
-
-
             park_beam(scanner_with_offset, park_location)
 
             # Flat wavefront signal, before running the algorithm
             shutter.open = True
             slm.set_phases(0)
 
-            # TODO: calibrate
+            frames = inline_calibrate(feedback=reader, slm=slm, gray_values1=gray_values1, gray_values2=gray_values2,
+                                      progress_bar=progress_bar, progress_bar_suffix=progress_bar_suffix)
 
             shutter.open = False
             scanner_with_offset.reset_roi()
@@ -228,8 +240,10 @@ with Connection.open_serial_port(comport) as connection:            # Open conne
                 input_channel_kwargs=[input_channel_kwargs],
                 park_kwargs=[park_kwargs],
                 park_result=[park_result],
-                roi_kwargs=[roi_kwargs],
                 dark_frame=[dark_frame],
+                gray_values1=[gray_values1],
+                gray_values2=[gray_values2],
+                frames=[frames],
             )
             # TODO: add calibration raw measurement
 
