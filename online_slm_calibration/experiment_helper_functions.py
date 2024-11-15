@@ -214,8 +214,8 @@ def inline_calibrate(feedback: Detector, slm: SLM | MockSLM, n_x=4, n_y=4, gray_
     x_check = np.arange(n_x).reshape((1, n_x))
     checkerboard = np.mod(x_check + y_check, 2)
 
-    data_shape = feedback.data_shape
-    frames = np.zeros(shape=(data_shape[0], data_shape[1], len(gray_values1), len(gray_values2)))
+    s = feedback.data_shape
+    frames = np.zeros(shape=(s[0], s[1], len(gray_values1), len(gray_values2)))
 
     # Dual gray value stepping
     for i2, gv2 in enumerate(gray_values2):
@@ -225,7 +225,7 @@ def inline_calibrate(feedback: Detector, slm: SLM | MockSLM, n_x=4, n_y=4, gray_
             slm.update()
             frames[:, :, i1, i2] = feedback.read()
 
-            if isinstance(progress_bar, tqdm):
+            if progress_bar is not None:
                 progress_bar.set_description(desc=progress_bar_suffix + f', gv1={gv1}, gv2={gv2}')
                 progress_bar.update()
 

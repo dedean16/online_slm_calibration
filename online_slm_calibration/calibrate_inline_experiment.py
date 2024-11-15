@@ -145,7 +145,7 @@ scanner_with_offset = ScanningMicroscope(
     resolution=scanner_props['resolution'])  # Define notch filter to remove background ripple
 scanner_with_offset.zoom = scanner_props['zoom']
 
-# Define Processor that fetches data from scanner and removes offset and ROI detector
+# Define Processor that fetches data from scanner and removes offset
 reader = OffsetRemover(source=scanner_with_offset, offset=2 ** 15, dtype_out='float64')
 
 # SLM
