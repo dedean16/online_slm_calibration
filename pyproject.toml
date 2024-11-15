@@ -10,7 +10,7 @@ python = "~3.11"
 torch = "^2.5"
 matplotlib = "^3.8.3"
 numpy = "^1.26.4"
-openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "fe1dea7d99cf980bc48ce99f0801f17d6822197a" }
+openwfs = { git = "https://github.com/IvoVellekoop/openwfs", rev = "fe1dea7d99cf980bc48ce99f0801f17d6822197a", extras = ['all'] }
 tqdm = "^4.66.2"
 h5py = "~3.11.0"
 gitpython = "^3.1.43"
