@@ -234,14 +234,14 @@ def learn_field(
         progress_bar.update()
 
     # split phase and amplitude, and unwrap phase
-    E = E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())  # experimental
-    amplitude = E.abs()
-    phase = np.unwrap(torch.angle(E))
+    Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()
+    amplitude = Ed.abs()
+    phase = np.unwrap(np.angle(Ed))
 
     if do_plot and do_end_plot:
         plt.figure(figsize=(14, 4.3))
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
         plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
 
-    return nonlinearity.item(), lr.item(), phase.detach().numpy(), amplitude.detach().numpy()
+    return nonlinearity.item(), lr.item(), phase, amplitude.detach()
 
