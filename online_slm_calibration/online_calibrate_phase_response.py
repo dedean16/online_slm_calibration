@@ -54,6 +54,7 @@ for n_f, filepath in enumerate(ref_files):
 ref_gray = ref_gray_all[0]
 ref_amplitude = np.median(ref_amp_all, axis=0)
 ref_phase = np.median(ref_phase_all, axis=0)
+ref_phase -= ref_phase[0]
 ref_phase_std = np.std(ref_phase_all, axis=0)
 
 # plt.plot(np.abs(ref_field_all).T)
@@ -72,6 +73,7 @@ nl, lr, phase, amplitude = learn_field(
 
 print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
 
+phase -= phase[0]
 plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1], ref_gray, ref_phase, ref_phase_std, ref_amplitude)
 
 plt.figure()

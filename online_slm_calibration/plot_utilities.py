@@ -4,7 +4,6 @@ from matplotlib import pyplot as plt
 
 
 def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, phase_ref, phase_ref_err, amplitude_ref):
-    phase = phase - phase[50] + phase_ref[50]
 
     plt.figure(figsize=(9, 8))
     plt.subplots_adjust(left=0.09, right=0.96, hspace=0.35, wspace=0.35, top=0.95, bottom=0.08)
