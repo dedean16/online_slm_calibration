@@ -30,7 +30,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
 
     # With the current measurements, there are some deviations due to the actual gray values used
     plt.subplot(2, 2, 3)
-    plt.plot(abs(phase[:-7] - phase_ref[7:]), color='red')
+    plt.plot(abs(phase - phase_ref), color='red')
     plt.xlabel('Gray value')
     plt.ylabel('Phase difference (rad)')
     plt.title('c. Phase error')
@@ -43,7 +43,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
 
     plt.figure()
     plt.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
-    plt.plot(np.diff(phase_ref)[:-3])
+    plt.plot(np.diff(phase_ref))
     plt.title('Diff')
     plt.xlabel('Gray level')
     plt.ylabel('$d\\phi/dg$')
