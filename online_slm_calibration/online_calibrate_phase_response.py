@@ -1,12 +1,10 @@
-import glob
-
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import learn_field, detrend
-from directories import data_folder, data_folder
+from directories import data_folder
 from plot_utilities import plot_results_ground_truth, plot_result_feedback_fit
 
 
@@ -15,8 +13,8 @@ plt.rcParams.update({'font.size': 14})
 
 # === Settings === #
 # Import feedback measurements and reference phase response
-ref_glob = str(data_folder.joinpath("tg_fringe")) + '/tg-fringe-slm-calibration-r*.npz'  # Reference phase response
-filepath_measurements = data_folder.joinpath("slm_calibration_signal_feedback.mat")
+inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731670344.npz")
+ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*.npz")  # Reference
 
 settings = {
     "do_plot": True,
@@ -24,19 +22,23 @@ settings = {
     "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
-    "iterations": 2000,
+    "iterations": 3000,
     "smooth_loss_factor": 1.0,
     "balance_factor": 1.0,
 }
 
-with h5py.File(filepath_measurements, "r") as f:
-    feedback_dict = get_dict_from_hdf5(f)
-    measurements = feedback_dict["feedback"]
-    gv0 = feedback_dict["gv_row"].astype(int).ravel()
-    gv1 = feedback_dict["gv_col"].astype(int).ravel()
+# === Import and process inline measurement === #
+npz_data = np.load(inline_file)
+measurements = npz_data["frames"].mean(axis=(0, 1, 2))[:, 3:]
+gv0 = npz_data['gray_values1'][0]
+gv1 = npz_data['gray_values2'][0][3:]
+
+# Compensate for photo-bleaching
+measurements = detrend(gv0, gv1, measurements)
 
 
-ref_files = glob.glob(ref_glob)
+# === Import and process reference === #
+ref_files = list(ref_glob)
 ref_gray_all = [None] * len(ref_files)
 ref_phase_all = [None] * len(ref_files)
 ref_amp_all = [None] * len(ref_files)
@@ -55,16 +57,12 @@ ref_phase = np.median(ref_phase_all, axis=0)
 ref_phase_std = np.std(ref_phase_all, axis=0)
 
 # plt.plot(np.abs(ref_field_all).T)
+plt.figure()
 plt.plot(np.asarray(ref_phase_all).T)
 plt.xlabel('Gray value')
 plt.ylabel('Phase')
 plt.title('TG fringe calibration, unwrapped\ncompensated for sign and offset')
 plt.pause(0.01)
-
-# Compensate for photo-bleaching
-#measurements = measurements[:, 3:]
-#gv1 = gv1[3:]
-measurements = detrend(gv0, gv1, measurements)
 
 
 # Learn phase response
