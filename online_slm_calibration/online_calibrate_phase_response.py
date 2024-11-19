@@ -1,17 +1,23 @@
+import glob
+
 import numpy as np
 import matplotlib.pyplot as plt
 import h5py
 
 from helper_functions import get_dict_from_hdf5
 from calibration_functions import learn_field, detrend
-from directories import data_folder
-from online_slm_calibration.plot_utilities import plot_results_ground_truth, plot_result_feedback_fit
+from directories import data_folder, local_data
+from plot_utilities import plot_results_ground_truth, plot_result_feedback_fit
 
 
 plt.rcParams.update({'font.size': 14})
 
 
 # === Settings === #
+# Import feedback measurements and reference phase response
+ref_glob = str(local_data.joinpath("tg_fringe")) + '/tg-fringe-slm-calibration-r*.npz'  # Reference phase response
+filepath_measurements = data_folder.joinpath("slm_calibration_signal_feedback.mat")
+
 settings = {
     "do_plot": True,
     "do_end_plot": True,
@@ -23,9 +29,6 @@ settings = {
     "balance_factor": 1.0,
 }
 
-# Import feedback measurements and reference phase response
-filepath_ref = data_folder.joinpath("slm_reference_phase_response.mat")  # Reference phase response
-filepath_measurements = data_folder.joinpath("slm_calibration_signal_feedback.mat")
 with h5py.File(filepath_measurements, "r") as f:
     feedback_dict = get_dict_from_hdf5(f)
     measurements = feedback_dict["feedback"]
@@ -54,12 +57,19 @@ with h5py.File(filepath_measurements, "r") as f:
     gv1 = np.asarray((0, 32, 65, 97, 130, 162, 195, 227, 0))
 
 
-with h5py.File(filepath_ref) as f:
-    ref_dict = get_dict_from_hdf5(f)
-    ref_gray = ref_dict["gray_values"][0]
-    ref_phase = ref_dict["phase_mean"][0]
-    ref_phase_err = ref_dict["phase_std"][0]
-    ref_amplitude = ref_dict["modulation_depth"][0]
+ref_files = glob.glob(ref_glob)
+ref_gray_all = [None] * len(ref_files)
+ref_field_all = [None] * len(ref_files)
+
+for n_f, filepath in enumerate(ref_files):
+    npz_data = np.load(filepath)
+    ref_gray_all[n_f] = npz_data["gray_values"]
+    ref_field_all[n_f] = npz_data["field"]
+
+ref_gray = ref_gray_all[0]
+ref_amplitude = np.median(np.abs(ref_field_all), axis=0)
+ref_phase = np.median(np.angle(ref_field_all), axis=0)
+ref_phase_std = np.std(np.angle(ref_field_all), axis=0)
 
 # Compensate for photo-bleaching
 #measurements = measurements[:, 3:]
@@ -74,7 +84,7 @@ nl, lr, phase, amplitude = learn_field(
 
 print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
 
-plot_results_ground_truth(gv0, phase, amplitude, ref_gray, ref_phase, ref_phase_err, ref_amplitude)
+plot_results_ground_truth(gv0, phase, amplitude, ref_gray, ref_phase, ref_phase_std, ref_amplitude)
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()
