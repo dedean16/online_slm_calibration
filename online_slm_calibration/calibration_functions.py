@@ -29,38 +29,68 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     gv0 = np.asarray(gray_value0)
     sym_selection = [np.nonzero(gv0 == gv1)[0][0].item() for gv1 in gray_value1]
 
-    learning_rate = 0.01
+    learning_rate = 0.05
+
+    # Initial values
     offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
     decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
     t = torch.tensor(range(len(m)))
-    def compensate_bleaching():
-        return (m - offset) * torch.exp(decay * t)
 
-    params = [{"lr": learning_rate, "params": [offset]}, {"lr": learning_rate / len(m), "params": [decay]}]
+    def photobleaching_fit():
+        return offset * torch.exp(-decay * t)
+
+    def take_diag(M):
+        return M.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection].diagonal()
+
+    params = [
+        {"params": [offset], "lr": learning_rate},
+        {"params": [decay], "lr": 10*learning_rate / len(m)}
+    ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
-    for it in range(100):
-        c = compensate_bleaching()
-        c = c.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection]
-        loss = (c - c.t()).pow(2).mean() / c.pow(2).mean()
+    plt.figure(figsize=(15, 5))
+
+    for it in range(300):
+        m_fit = photobleaching_fit()
+        m_compensated = m / m_fit
+        loss = (take_diag(m) - take_diag(m_fit)).pow(2).mean()
+
+        measurements_compensated = m_compensated.detach().numpy().reshape(measurements.shape, order='F')
+
+        if it % 10 == 0:
+            plt.clf()
+            plt.subplot(1, 3, 1)
+            plt.imshow(measurements_compensated, aspect='auto', interpolation='nearest')
+            plt.title(f'Offset={offset.detach():.3f}, decay={decay.detach():.3g}')
+
+            plt.subplot(1, 3, 2)
+            plt.plot(take_diag(m).detach())
+            plt.plot(take_diag(m_fit).detach())
+            plt.ylim((0, 10))
+            plt.title(f'Fit diagonal entries (gv0==gv1)')
+
+            plt.subplot(1, 3, 3)
+            plt.plot(take_diag(m_compensated).detach())
+            plt.ylim((0, 10))
+            plt.title(f'Compensated diagonal entries (gv0==gv1), {it}')
+            plt.pause(0.01)
+
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
 
-    m = compensate_bleaching().detach().numpy()
-    measurements = m.reshape(measurements.shape, order='F')
-
-    ff = measurements[sym_selection, :]
+    ff = measurements_compensated[sym_selection, :]
 
     if do_plot:
         plt.figure()
         plt.imshow(ff)
-        plt.show()
+        plt.title('Selected measurements\nwith gray values swapped')
 
+        plt.figure()
         plt.plot(m)
         plt.show()
 
-    return measurements
+    return measurements_compensated
 
 
 def predict_feedback(
@@ -237,6 +267,8 @@ def learn_field(
     Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()
     amplitude = Ed.abs()
     phase = np.unwrap(np.angle(Ed))
+    phase *= np.sign(phase[-1] - phase[0])
+    phase -= phase.mean()
 
     if do_plot and do_end_plot:
         plt.figure(figsize=(14, 4.3))
