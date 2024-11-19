@@ -14,7 +14,7 @@ plt.rcParams.update({'font.size': 14})
 # === Settings === #
 # Import feedback measurements and reference phase response
 inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731670344.npz")
-ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*.npz")  # Reference
+ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")  # Reference
 
 settings = {
     "do_plot": True,
@@ -74,6 +74,9 @@ nl, lr, phase, amplitude = learn_field(
 print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
 
 phase -= phase[0]
+
+# Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
+# -> leave out index 255 from plot
 plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1], ref_gray, ref_phase, ref_phase_std, ref_amplitude)
 
 plt.figure()
@@ -86,7 +89,7 @@ plt.plot(E.real, E.imag, label="Predicted")
 plt.legend()
 
 plt.figure()
-plt.plot(np.angle(E_ref.numpy().conj() * E))
+plt.plot(np.angle(E_ref.conj() * E[:-1].numpy()))
 plt.title('Phase difference Ref-Pred')
 plt.xlabel('Gray value')
 plt.ylabel('$\\Delta\\phi$ (rad)')

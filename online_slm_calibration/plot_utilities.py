@@ -43,7 +43,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
     plt.figure()
     plt.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
     plt.plot(np.diff(phase_ref))
-    plt.title('Diff')
+    plt.title('Phase response slope')
     plt.xlabel('Gray level')
     plt.ylabel('$d\\phi/dg$')
 
