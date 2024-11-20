@@ -29,7 +29,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     gv0 = np.asarray(gray_value0)
     sym_selection = [np.nonzero(gv0 == gv1)[0][0].item() for gv1 in gray_value1]
 
-    learning_rate = 0.05
+    learning_rate = 0.1
 
     # Initial values
     offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)

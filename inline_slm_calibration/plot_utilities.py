@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, phase_ref, phase_ref_err, amplitude_ref):
 
     plt.figure(figsize=(9, 8))
-    plt.subplots_adjust(left=0.09, right=0.96, hspace=0.35, wspace=0.35, top=0.95, bottom=0.08)
+    plt.subplots_adjust(left=0.1, right=0.96, hspace=0.35, wspace=0.35, top=0.95, bottom=0.08)
 
     plt.subplot(2, 2, 1)
     plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', label='Reference')      # plot phase with std error
@@ -32,13 +32,13 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
     plt.plot(abs(phase - phase_ref), color='red')
     plt.xlabel('Gray value')
     plt.ylabel('Phase difference (rad)')
-    plt.title('c. Phase error')
+    plt.title('c.')
 
     plt.subplot(2, 2, 4)
     plt.plot(abs(rel_amplitude - rel_amplitude_ref)[:-3], color='red')
     plt.xlabel('Gray value')
     plt.ylabel('Normalized amplitude difference')
-    plt.title('d. Normalized amplitude error')
+    plt.title('d.')
 
     plt.figure()
     plt.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
