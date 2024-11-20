@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "online-slm-calibration"
+name = "inline-slm-calibration"
 version = "0.2.0"
 description = ""
 authors = ["Daniel Cox <danielcox16@hotmail.com>"]
