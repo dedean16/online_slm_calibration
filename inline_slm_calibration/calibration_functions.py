@@ -34,7 +34,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     # Initial values
     offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
     decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
-    t = torch.tensor(range(len(m)))
+    t = np.cumsum(m)
 
     def photobleaching_fit():
         return offset * torch.exp(-decay * t)

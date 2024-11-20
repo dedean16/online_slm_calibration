@@ -29,9 +29,9 @@ settings = {
 
 # === Import and process inline measurement === #
 npz_data = np.load(inline_file)
-measurements = npz_data["frames"].mean(axis=(0, 1, 2))[:, 3:]
+measurements = npz_data["frames"].mean(axis=(0, 1, 2))
 gv0 = npz_data['gray_values1'][0]
-gv1 = npz_data['gray_values2'][0][3:]
+gv1 = npz_data['gray_values2'][0]
 
 # Compensate for photo-bleaching
 measurements = detrend(gv0, gv1, measurements)
@@ -54,7 +54,7 @@ for n_f, filepath in enumerate(ref_files):
 ref_gray = ref_gray_all[0]
 ref_amplitude = np.median(ref_amp_all, axis=0)
 ref_phase = np.median(ref_phase_all, axis=0)
-ref_phase -= ref_phase[0]
+ref_phase -= ref_phase.mean()
 ref_phase_std = np.std(ref_phase_all, axis=0)
 
 # plt.plot(np.abs(ref_field_all).T)
@@ -73,7 +73,7 @@ nl, lr, phase, amplitude = learn_field(
 
 print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
 
-phase -= phase[0]
+phase -= phase.mean()
 
 # Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
 # -> leave out index 255 from plot
