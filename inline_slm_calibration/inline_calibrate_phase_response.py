@@ -22,7 +22,7 @@ settings = {
     "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
-    "iterations": 3000,
+    "iterations": 4000,
     "smooth_loss_factor": 1.0,
     "balance_factor": 1.0,
 }
@@ -67,11 +67,11 @@ plt.pause(0.01)
 
 
 # Learn phase response
-nl, lr, phase, amplitude = learn_field(
+nl, a, b, s_bg, phase, amplitude = learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings
 )
 
-print(f"lr = {lr:.4f} (1.0), nl = {nl:.4f} ({settings['nonlinearity']})")
+print(f"a={a:.4f} (1.0), b={b:.4f}, s_bg={s_bg:.4f}, nl = {nl:.4f} ({settings['nonlinearity']})")
 
 phase -= phase.mean()
 
