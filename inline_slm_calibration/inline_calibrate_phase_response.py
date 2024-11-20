@@ -29,7 +29,7 @@ settings = {
 
 # === Import and process inline measurement === #
 npz_data = np.load(inline_file)
-measurements = npz_data["frames"].mean(axis=(0, 1, 2))
+measurements = npz_data["frames"].mean(axis=(0, 1, 2)) - npz_data['dark_frame'].mean()
 gv0 = npz_data['gray_values1'][0]
 gv1 = npz_data['gray_values2'][0]
 
