@@ -220,37 +220,36 @@ def learn_field(
     measurements = measurements / measurements.std()
     measurements.detach()
     # E_abs_init = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
-    E_abs_init = 1.0
-    # E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
-    E = E_abs_init * torch.exp(2j * np.pi * torch.rand(256))
-    E.detach()
-    E.requires_grad_(True)
+    # E_abs_init = 1.0
+    # # E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
+    # E = E_abs_init * torch.exp(2j * np.pi * torch.rand(256))
+    # E.requires_grad_(True)
+    phase = 2 * np.pi * torch.rand(256)
+    phase.requires_grad_(True)
     a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
     b = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
     s_bg = torch.tensor(0.0, requires_grad=True)
     nonlinearity = torch.tensor(nonlinearity, dtype=torch.float32, requires_grad=True)
 
     # Initialize parameters and optimizer
-    params = [{"lr": learning_rate, "params": [E, a, b, s_bg]}, {"lr": learning_rate * 0.1, "params": [nonlinearity]}]
+    params = [{"lr": learning_rate, "params": [phase, a, b, s_bg]}, {"lr": learning_rate * 0.1, "params": [nonlinearity]}]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
-    def model(E, a, b, s_bg):
-        E0 = E[gray_values0].view(-1, 1)
-        E1 = E[gray_values1].view(1, -1)
-        I_excite = (a * torch.exp(1j * torch.angle(E0)) + b * torch.exp(1j * torch.angle(E1))).abs().pow(2)
+    def model(phase, a, b, s_bg):
+        # E0 = E[gray_values0].view(-1, 1)
+        # E1 = E[gray_values1].view(1, -1)
+        # I_excite = (a * torch.exp(1j * torch.angle(E0)) + b * torch.exp(1j * torch.angle(E1))).abs().pow(2)
+        phase0 = phase[gray_values0].view(-1, 1)
+        phase1 = phase[gray_values1].view(1, -1)
+        I_excite = (a * torch.exp(1j * phase0) + b * torch.exp(1j * phase1)).abs().pow(2)
         # I_excite = (a * E0 + b * E1).abs().pow(2)
         signal_intenstity = I_excite.pow(nonlinearity) + s_bg
         return signal_intenstity
 
     for it in range(iterations):
-        feedback_predicted = model(E, a, b, s_bg)
-        loss_meas = (measurements - feedback_predicted).pow(2).mean()
-        loss_reg = balance_factor * (a - b).abs().pow(2)
-        loss_smooth = smooth_loss_factor * torch.std(abs(E))
-        loss_amplitude = 100 * (1 - E.abs()).pow(2).mean()
-        loss = loss_meas + loss_reg + loss_smooth + loss_amplitude
-        # loss = loss_meas + loss_reg + loss_smooth
+        feedback_predicted = model(phase, a, b, s_bg)
+        loss = (measurements - feedback_predicted).pow(2).mean()
 
         # Gradient descent step
         loss.backward()
@@ -263,18 +262,18 @@ def learn_field(
             else:
                 plt.clf()
             plt.subplot(1, 3, 1)
-            plot_field_response(E)
+            plot_field_response(torch.exp(1j * phase))
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f"feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg: {loss_reg:.3g}" +
-                      f"\na: {a:.3g}, b: {b:.3g}, s_bg: {s_bg:.3g}")
+            # plt.title(f"feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg: {loss_reg:.3g}" +
+            #           f"\na: {a:.3g}, b: {b:.3g}, s_bg: {s_bg:.3g}")
             plt.pause(0.01)
 
         progress_bar.update()
 
     # split phase and amplitude, and unwrap phase
-    Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()
-    amplitude = Ed.abs()
-    phase = np.unwrap(np.angle(Ed))
+    # Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()
+    amplitude = torch.ones_like(phase.detach())
+    phase = np.unwrap(phase.detach())
     phase *= np.sign(phase[-1] - phase[0])
     phase -= phase.mean()
 
