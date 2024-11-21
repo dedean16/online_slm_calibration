@@ -219,7 +219,8 @@ def learn_field(
     measurements = torch.tensor(measurements, dtype=torch.float32)
     measurements = measurements / measurements.std()
     measurements.detach()
-    E_abs_init = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
+    # E_abs_init = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
+    E_abs_init = 1.0
     E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
     E.detach()
     E.requires_grad_(True)
@@ -236,7 +237,7 @@ def learn_field(
     def model(E, a, b, s_bg):
         E0 = E[gray_values0].view(-1, 1)
         E1 = E[gray_values1].view(1, -1)
-        I_excite = (a * E0 + b * E1).abs().pow(2)
+        I_excite = (a * torch.exp(1j * torch.angle(E0)) + b * torch.exp(1j * torch.angle(E1))).abs().pow(2)
         signal_intenstity = I_excite.pow(nonlinearity) + s_bg
         return signal_intenstity
 
@@ -245,7 +246,7 @@ def learn_field(
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (a - b).abs().pow(2)
         loss_smooth = smooth_loss_factor * torch.std(abs(E))
-        loss = loss_meas + loss_reg + loss_smooth
+        loss = loss_meas + loss_reg + loss_smooth + (1 - E.abs()).pow(2).sum()
 
         # Gradient descent step
         loss.backward()
