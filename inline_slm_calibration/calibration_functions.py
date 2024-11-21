@@ -239,6 +239,7 @@ def learn_field(
         E0 = E[gray_values0].view(-1, 1)
         E1 = E[gray_values1].view(1, -1)
         I_excite = (a * torch.exp(1j * torch.angle(E0)) + b * torch.exp(1j * torch.angle(E1))).abs().pow(2)
+        # I_excite = (a * E0 + b * E1).abs().pow(2)
         signal_intenstity = I_excite.pow(nonlinearity) + s_bg
         return signal_intenstity
 
@@ -247,7 +248,9 @@ def learn_field(
         loss_meas = (measurements - feedback_predicted).pow(2).mean()
         loss_reg = balance_factor * (a - b).abs().pow(2)
         loss_smooth = smooth_loss_factor * torch.std(abs(E))
-        loss = loss_meas + loss_reg + loss_smooth + (1 - E.abs()).pow(2).sum()
+        loss_amplitude = 100 * (1 - E.abs()).pow(2).mean()
+        loss = loss_meas + loss_reg + loss_smooth + loss_amplitude
+        # loss = loss_meas + loss_reg + loss_smooth
 
         # Gradient descent step
         loss.backward()

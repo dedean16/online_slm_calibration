@@ -13,7 +13,7 @@ plt.rcParams.update({'font.size': 14})
 
 # === Settings === #
 # Import feedback measurements and reference phase response
-inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731670344.npz")
+inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731674397.npz")
 ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")  # Reference
 
 settings = {
