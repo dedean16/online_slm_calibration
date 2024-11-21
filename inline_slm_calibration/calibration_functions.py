@@ -221,7 +221,8 @@ def learn_field(
     measurements.detach()
     # E_abs_init = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
     E_abs_init = 1.0
-    E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
+    # E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
+    E = E_abs_init * torch.exp(2j * np.pi * torch.rand(256))
     E.detach()
     E.requires_grad_(True)
     a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)

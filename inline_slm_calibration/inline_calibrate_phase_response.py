@@ -19,9 +19,9 @@ ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz") 
 settings = {
     "do_plot": True,
     "do_end_plot": True,
-    "plot_per_its": 50,
+    "plot_per_its": 30,
     "nonlinearity": 2.0,
-    "learning_rate": 0.3,
+    "learning_rate": 0.5,
     "iterations": 4000,
     "smooth_loss_factor": 0.0,
     "balance_factor": 0.0,
