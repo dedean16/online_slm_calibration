@@ -185,9 +185,6 @@ def learn_field(
     do_end_plot: bool = False,
     plot_per_its: int = 10,
     learning_rate=0.1,
-    phase_stroke_init=2.5 * torch.pi,
-    balance_factor=1.0,
-    smooth_loss_factor=1.0,
 ) -> tuple[float, float, np.array, np.ndarray]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
@@ -213,39 +210,35 @@ def learn_field(
         nonlinearity, lr, phase[i], amplitude[i]
     """
 
-    # Initial guess:
-    # normalize measurements to have std=1, then subtract the mean
-    # then initialize a = 1.0 and E=(peak-peak(measurements)/2)^(1/non_linearity)
     measurements = torch.tensor(measurements, dtype=torch.float32)
-    measurements = measurements / measurements.std()
-    measurements.detach()
-    E_abs_init = (0.5 * (measurements.max() - measurements.min())).pow(1 / nonlinearity)
-    E = E_abs_init * torch.exp(1j * torch.linspace(0, phase_stroke_init, 256))
-    E.detach()
+    measurements = measurements / measurements.std()                # Normalize by std
+
+    # Initial guess:
+    E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
     E.requires_grad_(True)
-    a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
-    b = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)
-    s_bg = torch.tensor(0.0, requires_grad=True)
+    a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)           # Group A complex pre-factor
+    b = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)           # Group B complex pre-factor
+    signal_bg = torch.tensor(0.0, requires_grad=True)
     nonlinearity = torch.tensor(nonlinearity, dtype=torch.float32, requires_grad=True)
 
     # Initialize parameters and optimizer
-    params = [{"lr": learning_rate, "params": [E, a, b, s_bg]}, {"lr": learning_rate * 0.1, "params": [nonlinearity]}]
+    params = [
+        {"lr": learning_rate, "params": [E, a, b, signal_bg]},
+        {"lr": learning_rate * 0.1, "params": [nonlinearity]}
+    ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
-    def model(E, a, b, s_bg):
+    def model(E, a, b, s_bg, nonlinearity):
+        """Compute signal intensity."""
         E0 = E[gray_values0].view(-1, 1)
         E1 = E[gray_values1].view(1, -1)
         I_excite = (a * E0 + b * E1).abs().pow(2)
-        signal_intenstity = I_excite.pow(nonlinearity) + s_bg
-        return signal_intenstity
+        return I_excite.pow(nonlinearity) + s_bg
 
     for it in range(iterations):
-        feedback_predicted = model(E, a, b, s_bg)
-        loss_meas = (measurements - feedback_predicted).pow(2).mean()
-        loss_reg = balance_factor * (a - b).abs().pow(2)
-        loss_smooth = smooth_loss_factor * torch.std(abs(E))
-        loss = loss_meas + loss_reg + loss_smooth
+        feedback_predicted = model(E, a, b, signal_bg, nonlinearity)
+        loss = (measurements - feedback_predicted).pow(2).mean()
 
         # Gradient descent step
         loss.backward()
@@ -260,14 +253,14 @@ def learn_field(
             plt.subplot(1, 3, 1)
             plot_field_response(E)
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f"feedback: {loss_meas:.3g}, smoothness: {loss_smooth:.3g}, lr_reg: {loss_reg:.3g}" +
-                      f"\na: {a:.3g}, b: {b:.3g}, s_bg: {s_bg:.3g}")
+            plt.title(f"feedback loss: {loss:.3g}\na: {a:.3g}, b: {b:.3g}, signal_bg: {signal_bg:.3g}")
             plt.pause(0.01)
 
         progress_bar.update()
 
     # split phase and amplitude, and unwrap phase
-    Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()
+    # Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()  # Center E around 0
+    Ed = E.detach()
     amplitude = Ed.abs()
     phase = np.unwrap(np.angle(Ed))
     phase *= np.sign(phase[-1] - phase[0])
@@ -278,5 +271,5 @@ def learn_field(
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
         plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
 
-    return nonlinearity.item(), a.item(), b.item(), s_bg.item(), phase, amplitude.detach()
+    return nonlinearity.item(), a.item(), b.item(), signal_bg.item(), phase, amplitude.detach()
 

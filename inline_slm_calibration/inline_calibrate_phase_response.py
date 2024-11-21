@@ -13,7 +13,7 @@ plt.rcParams.update({'font.size': 14})
 
 # === Settings === #
 # Import feedback measurements and reference phase response
-inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731670344.npz")
+inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.npz")
 ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")  # Reference
 
 settings = {
@@ -22,9 +22,7 @@ settings = {
     "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
-    "iterations": 4000,
-    "smooth_loss_factor": 1.0,
-    "balance_factor": 1.0,
+    "iterations": 3000,
 }
 
 # === Import and process inline measurement === #
