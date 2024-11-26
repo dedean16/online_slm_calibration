@@ -156,19 +156,19 @@ def learn_field(
     E.requires_grad_(True)
     a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)           # Group A complex pre-factor
     b = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)           # Group B complex pre-factor
-    signal_bg = torch.tensor(0.0, requires_grad=True)
+    P_bg = torch.tensor(0.0, requires_grad=True)
     nonlinearity = torch.tensor(nonlinearity, dtype=torch.float32, requires_grad=True)
 
     # Initialize parameters and optimizer
     params = [
-        {"lr": learning_rate, "params": [E, a, b, signal_bg]},
+        {"lr": learning_rate, "params": [E, a, b, P_bg]},
         {"lr": learning_rate * 0.1, "params": [nonlinearity]}
     ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
     for it in range(iterations):
-        feedback_predicted = signal_model(E, a, b, signal_bg, nonlinearity)
+        feedback_predicted = signal_model(gray_values0, gray_values1, E, a, b, P_bg, nonlinearity)
         loss = (measurements - feedback_predicted).pow(2).mean()
 
         # Gradient descent step
@@ -184,7 +184,7 @@ def learn_field(
             plt.subplot(1, 3, 1)
             plot_field_response(E)
             plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
-            plt.title(f"feedback loss: {loss:.3g}\na: {a:.3g}, b: {b:.3g}, signal_bg: {signal_bg:.3g}")
+            plt.title(f"feedback loss: {loss:.3g}\na: {a:.3g}, b: {b:.3g}, P_bg: {P_bg:.3g}")
             plt.pause(0.01)
 
         progress_bar.update()
@@ -202,5 +202,5 @@ def learn_field(
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
         plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
 
-    return nonlinearity.item(), a.item(), b.item(), signal_bg.item(), phase, amplitude.detach()
+    return nonlinearity.item(), a.item(), b.item(), P_bg.item(), phase, amplitude.detach()
 
