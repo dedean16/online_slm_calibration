@@ -11,29 +11,32 @@ from tqdm import tqdm
 from plot_utilities import plot_field_response, plot_feedback_fit, plot_result_feedback_fit
 
 
+def photobleaching_model(factor, decay, t):
+    """
+    Photobleaching model.
+    """
+    return factor * torch.exp(-decay * t)
+
+
 def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     m = torch.tensor(measurements.flatten(order="F"))
     m = m / m.abs().mean()
 
-    # locate elements for which gv0 == gv1. These are measured twice and should be equal except for noise and photobleaching.
     gv0 = np.asarray(gray_value0)
     sym_selection = [np.nonzero(gv0 == gv1)[0][0].item() for gv1 in gray_value1]
 
     learning_rate = 0.1
 
     # Initial values
-    offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
+    factor = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
     decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
     t = np.cumsum(m)
-
-    def photobleaching_fit():
-        return offset * torch.exp(-decay * t)
 
     def take_diag(M):
         return M.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection].diagonal()
 
     params = [
-        {"params": [offset], "lr": learning_rate},
+        {"params": [factor], "lr": learning_rate},
         {"params": [decay], "lr": 10*learning_rate / len(m)}
     ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
@@ -42,7 +45,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
         plt.figure(figsize=(15, 5))
 
     for it in range(300):
-        m_fit = photobleaching_fit()
+        m_fit = photobleaching_model(factor, decay, t)
         m_compensated = m / m_fit
         loss = (take_diag(m) - take_diag(m_fit)).pow(2).mean()
 
@@ -52,7 +55,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
             plt.clf()
             plt.subplot(1, 3, 1)
             plt.imshow(measurements_compensated, aspect='auto', interpolation='nearest')
-            plt.title(f'Offset={offset.detach():.3f}, decay={decay.detach():.3g}')
+            plt.title(f'Offset={factor.detach():.3f}, decay={decay.detach():.3g}')
 
             plt.subplot(1, 3, 2)
             plt.plot(take_diag(m).detach())
@@ -84,10 +87,11 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
         plt.xlabel('Index')
         plt.pause(0.01)
 
-    return measurements_compensated
+    return decay, factor
 
 
-def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonlinearity: tt) -> tt:
+def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonlinearity: tt, decay: tt,
+                 factor, received_energy) -> tt:
     """
     Compute feedback signal from two interfering fields.
 
@@ -111,20 +115,23 @@ def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonl
     E0 = E[gray_values0].view(-1, 1)
     E1 = E[gray_values1].view(1, -1)
     I_excite = (a * E0 + b * E1).abs().pow(2)
-    return I_excite.pow(nonlinearity) + P_bg
+    bleach_factor = photobleaching_model(factor, decay, received_energy).reshape((len(gray_values1), len(gray_values0))).T
+    return I_excite.pow(nonlinearity) * bleach_factor + P_bg
 
 
 def learn_field(
-    gray_values0: np.array,
-    gray_values1: np.array,
-    measurements: np.array,
-    nonlinearity: float = 1.0,
-    iterations: int = 50,
-    do_plot: bool = False,
-    do_end_plot: bool = False,
-    plot_per_its: int = 10,
-    learning_rate: float = 0.1,
-) -> tuple[float, float, float, float, nd, nd]:
+        gray_values0: np.array,
+        gray_values1: np.array,
+        measurements: np.array,
+        decay,
+        factor,
+        nonlinearity: float = 1.0,
+        iterations: int = 50,
+        do_plot: bool = False,
+        do_end_plot: bool = False,
+        plot_per_its: int = 10,
+        learning_rate: float = 0.1,
+    ) -> tuple[float, float, float, float, nd, nd]:
     """
     Learn the field response from dual gray value measurements.
 
@@ -137,6 +144,7 @@ def learn_field(
         gray_values0: Contains gray values of group A, corresponding to dim 0 of feedback.
         gray_values1: Contains gray values of group B, corresponding to dim 1 of feedback.
         measurements: Signal measurements as 2D array. Indices correspond to gray_values0 and gray_values1.
+        decay: Photobleaching decay.
         nonlinearity: Expected nonlinearity coefficient. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
         iterations: Number of learning iterations.
         do_plot: If True, plot during learning.
@@ -149,6 +157,8 @@ def learn_field(
     """
     measurements = torch.tensor(measurements, dtype=torch.float32)
     measurements = measurements / measurements.std()                                # Normalize by std
+
+    received_energy = np.cumsum(measurements / measurements.abs().mean())           # Received energy causing bleaching
 
     # Initial guess:
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
@@ -168,8 +178,9 @@ def learn_field(
 
     # Gradient descent loop
     for it in range(iterations):
-        feedback_predicted = signal_model(gray_values0, gray_values1, E, a, b, P_bg, nonlinearity)
-        loss = (measurements - feedback_predicted).pow(2).mean()
+        predicted_signal = signal_model(
+            gray_values0, gray_values1, E, a, b, P_bg, nonlinearity, decay, factor, received_energy)
+        loss = (measurements - predicted_signal).pow(2).mean()
 
         # Gradient descent step
         loss.backward()
@@ -184,7 +195,7 @@ def learn_field(
                 plt.clf()
             plt.subplot(1, 3, 1)
             plot_field_response(E)
-            plot_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
+            plot_feedback_fit(measurements, predicted_signal, gray_values0, gray_values1)
             plt.title(f"feedback loss: {loss:.3g}\na: {a:.3g}, b: {b:.3g}, P_bg: {P_bg:.3g}")
             plt.pause(0.01)
 
@@ -199,7 +210,7 @@ def learn_field(
     if do_plot and do_end_plot:
         plt.figure(figsize=(14, 4.3))
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
-        plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
+        plot_result_feedback_fit(measurements, predicted_signal, gray_values0, gray_values1)
 
     return nonlinearity.item(), a.item(), b.item(), P_bg.item(), phase, amplitude.detach()
 
