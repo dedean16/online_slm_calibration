@@ -46,8 +46,6 @@ nonlin, a, b, P_bg, phase, amplitude = learn_field(
 
 print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nonlin = {nonlin:.4f} ({settings['nonlinearity']})")
 
-phase -= phase.mean()
-
 if settings['do_end_plot']:
     # Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
     # -> leave out index 255 from plot

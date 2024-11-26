@@ -80,6 +80,9 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
 
         plt.figure()
         plt.plot(m)
+        plt.title('Measurements in sequence')
+        plt.ylabel('Signal')
+        plt.xlabel('Index')
         plt.pause(0.01)
 
     return measurements_compensated
