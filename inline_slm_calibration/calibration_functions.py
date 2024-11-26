@@ -2,24 +2,15 @@
 from typing import Tuple
 
 import torch
-from torch import Tensor as tt, Tensor
+from torch import Tensor as tt
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
-# External ours
-from openwfs.algorithms.troubleshoot import field_correlation
-
 # Internal
 from plot_utilities import plot_field_response, plot_feedback_fit, plot_result_feedback_fit
 
-
-def phase_correlation(phase1, phase2):
-    """
-    Compute the field correlation between two phase curves.
-    """
-    return field_correlation(torch.exp(1j * phase1), torch.exp(1j * phase2))
 
 def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     m = torch.tensor(measurements.flatten(order="F"))
@@ -93,85 +84,32 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     return measurements_compensated
 
 
-def predict_feedback(
-    gray_value0, gray_value1, a: tt, b: tt, phase_response_per_gv: tt, nonlinearity, noise_level=0.0
-) -> tt:
+def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonlinearity: tt) -> tt:
     """
+    Compute feedback signal from two interfering fields.
+
+    signal power = |a⋅E(g_A) + b⋅E(g_B)|^(2N) + P_bg
+
+    The illuminated pixel groups produce the corresponding fields a⋅E(g_A) and b⋅E(g_B) at the detector,
+    where g_A, g_B are the gray values displayed on group A and B respectively, E(g) is the complex field response
+    to the gray value g, and a, b are gray-value-invariant complex factors to account for the total intensity per group
+    and the corresponding paths through the optical setup. P_bg denotes out-of-focus background light and N is the
+    nonlinear order.
 
     Args:
-        gray_value0: Tensor containing gray values of group 0, corresponding to dim 0 of feedback.
-        gray_value1: Tensor containing gray values of group 1, corresponding to dim 1 of feedback.
-        a: Predicted feedback offset.
-        b: Predicted feedback interference signal factor.
-        phase_response_per_gv: Phase response per gray value. The corresponding gray values coincide with
-            the array index.
-        nonlinearity: Nonlinearity number. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
-        noise_level: Optional noise level.
-
-    Returns:
-        Predicted
+        gray_values0: Contains gray values of group A, corresponding to dim 0 of feedback.
+        gray_values1: Contains gray values of group B, corresponding to dim 1 of feedback.
+        E: Contains field response per gray value.
+        a: Complex pre-factor for group A field.
+        b: Complex pre-factor for group B field.
+        P_bg: Background signal.
+        nonlinearity: Nonlinearity coefficient.
     """
-    # Get phases
-    phase0 = phase_response_per_gv[gray_value0].view(-1, 1)
-    phase1 = phase_response_per_gv[gray_value1].view(1, -1)
+    E0 = E[gray_values0].view(-1, 1)
+    E1 = E[gray_values1].view(1, -1)
+    I_excite = (a * E0 + b * E1).abs().pow(2)
+    return I_excite.pow(nonlinearity) + P_bg
 
-    # Compute phase difference and predicted clean feedback
-    phase_diff = phase1 - phase0
-    feedback_clean = a + b * (torch.cos(phase_diff / 2) ** (2 * nonlinearity))
-
-    # Add optional noise if requested
-    if noise_level == 0.0:
-        return feedback_clean
-    else:
-        return feedback_clean + noise_level * torch.randn(feedback_clean.shape)
-
-
-def import_lut(filepath_lut, scaling=8.0) -> tt:
-    """
-    Import blt lookup table from .blt file; a text file containing 256 gray values, corresponding to the range [0, 2π).
-
-    Args:
-        filepath_lut: Filepath to the .blt file.
-        scaling: Scaling factor w.r.t. the range [0, 255] i.e. a bit depth of 8-bit, used for the .blt file. The range
-        of the gray values is by default [0, 2047], which corresponds to a scaling of 8.0.
-
-    Returns: the lookup table as 256-element tensor.
-    """
-    with open(filepath_lut, "r") as file:
-        numbers = [float(line.strip()) for line in file.readlines()]
-    return torch.tensor(numbers) / scaling
-
-
-# Create a Gaussian kernel function
-def gaussian_kernel1d(kernel_size: int, sigma: float):
-    # Create a tensor of equally spaced values (kernel_size elements centered around 0)
-    x = torch.arange(-(kernel_size // 2), kernel_size // 2 + 1, dtype=torch.float32)
-    gaussian = torch.exp(-0.5 * (x / sigma) ** 2)
-    return gaussian / gaussian.sum()
-
-
-def window_cosine_edge(size, edge_width):
-    """
-    Create a window with cosine edges.
-
-    Args:
-        size (int): Total size of the window.
-        edge_width (int): Width of the cosine-tapered edges.
-
-    Returns:
-        np.ndarray: The window array.
-    """
-    if edge_width * 2 > size:
-        raise ValueError("edge_width must be less than or equal to half of the size")
-
-    window = np.ones(size)
-    edge = np.linspace(0, np.pi / 2, edge_width)
-    taper = np.sin(edge) ** 2
-
-    window[:edge_width] = taper
-    window[-edge_width:] = taper[::-1]
-
-    return window
 
 
 def learn_field(
@@ -188,7 +126,7 @@ def learn_field(
 ) -> tuple[float, float, np.array, np.ndarray]:
     """
     Learn the phase lookup table from dual phase stepping measurements.
-    This function uses the model:
+    This function uses the signal_model:
 
         I[i,j] = |a * E[i] + b * E[j]|^(non_linearity)
 
@@ -229,15 +167,8 @@ def learn_field(
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
-    def model(E, a, b, s_bg, nonlinearity):
-        """Compute signal intensity."""
-        E0 = E[gray_values0].view(-1, 1)
-        E1 = E[gray_values1].view(1, -1)
-        I_excite = (a * E0 + b * E1).abs().pow(2)
-        return I_excite.pow(nonlinearity) + s_bg
-
     for it in range(iterations):
-        feedback_predicted = model(E, a, b, signal_bg, nonlinearity)
+        feedback_predicted = signal_model(E, a, b, signal_bg, nonlinearity)
         loss = (measurements - feedback_predicted).pow(2).mean()
 
         # Gradient descent step
