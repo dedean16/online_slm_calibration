@@ -13,14 +13,12 @@ from plot_utilities import plot_results_ground_truth
 from import_utilities import import_reference_calibrations, import_inline_calibration
 
 
-plt.rcParams.update({'font.size': 14})
-
-
 # === Settings === #
 # Paths/globs to measurement data files
-inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.npz") # Our inline method
-ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")     # Reference TG fringe
+inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.npz")     # Our inline method
+ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")         # Reference TG fringe
 
+plt.rcParams.update({'font.size': 14})
 settings = {
     "do_plot": True,
     "do_end_plot": True,

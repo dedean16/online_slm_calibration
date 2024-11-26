@@ -22,18 +22,18 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     learning_rate = 0.1
 
     # Initial values
-    offset = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
+    factor = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
     decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
     t = np.cumsum(m)
 
     def photobleaching_fit():
-        return offset * torch.exp(-decay * t)
+        return factor * torch.exp(-decay * t)
 
     def take_diag(M):
         return M.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection].diagonal()
 
     params = [
-        {"params": [offset], "lr": learning_rate},
+        {"params": [factor], "lr": learning_rate},
         {"params": [decay], "lr": 10*learning_rate / len(m)}
     ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
@@ -52,7 +52,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
             plt.clf()
             plt.subplot(1, 3, 1)
             plt.imshow(measurements_compensated, aspect='auto', interpolation='nearest')
-            plt.title(f'Offset={offset.detach():.3f}, decay={decay.detach():.3g}')
+            plt.title(f'Offset={factor.detach():.3f}, decay={decay.detach():.3g}')
 
             plt.subplot(1, 3, 2)
             plt.plot(take_diag(m).detach())
