@@ -38,7 +38,7 @@ nonlin, a, b, P_bg, phase, amplitude = learn_field(
     gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings
 )
 
-print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nl = {nonlin:.4f} ({settings['nonlinearity']})")
+print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nonlin = {nonlin:.4f} ({settings['nonlinearity']})")
 
 phase -= phase.mean()
 
