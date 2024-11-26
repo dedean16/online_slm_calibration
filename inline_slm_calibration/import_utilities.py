@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def import_reference_calibrations(ref_glob, do_plot=False):
+def import_reference_calibrations(ref_glob, do_plot=False, do_remove_bias=False):
     """
     Import a reference calibration from npz files.
 
@@ -13,6 +13,7 @@ def import_reference_calibrations(ref_glob, do_plot=False):
         ref_glob: Glob that defines the paths to the npz files. Each file must contain the keys "gray_values" and
             "field".
         do_plot: Plot extracted calibration curves.
+        do_remove_bias: Remove bias in the field by centering the minima and maxima of the real and imaginary parts.
 
     Returns:
         gray values, median phase, phase std, median amplitude, amplitude std. The std indicates the repeatability.
@@ -43,10 +44,15 @@ def import_reference_calibrations(ref_glob, do_plot=False):
 
     # Remove bias by centering extremes around zero
     Er = ref_amplitude * np.exp(1j * ref_phase)
-    Erc = (Er - 0.5 * (Er.real.max() + Er.real.min()) - 0.5j * (Er.imag.max() + Er.imag.min()))  # Center E around 0
-    ref_amplitude = abs(Erc)
-    ref_phase = np.unwrap(np.angle(Erc))
-    ref_phase -= ref_phase.mean()
+    Er_bias = 0.5 * (Er.real.max() + Er.real.min()) + 0.5j * (Er.imag.max() + Er.imag.min())  # Center E around 0
+    Er_bias_prcnt = 100 * abs(Er_bias) / np.mean(abs(Er))
+    print(f'Bias in reference field = {Er_bias_prcnt:.1f}%')
+
+    if do_remove_bias:
+        Er_centered = Er - Er_bias
+        ref_amplitude = abs(Er_centered)
+        ref_phase = np.unwrap(np.angle(Er_centered))
+        ref_phase -= ref_phase.mean()
 
     if do_plot:
         plt.figure()
