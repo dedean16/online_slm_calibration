@@ -22,7 +22,7 @@ plt.rcParams.update({'font.size': 14})
 settings = {
     "do_plot": True,
     "do_end_plot": True,
-    "plot_per_its": 1000,
+    "plot_per_its": 500,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
     "iterations": 50000,
@@ -30,7 +30,6 @@ settings = {
 
 # === Import and process inline measurement === #
 gv0, gv1, measurements = import_inline_calibration(inline_file, settings['do_plot'])
-decay, factor = detrend(gv0, gv1, measurements, do_plot=settings['do_plot'])         # Compensate for photo-bleaching
 
 # === Import and process reference === #
 ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
@@ -38,7 +37,7 @@ ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
 
 # Learn phase response
 nonlin, a, b, P_bg, phase, amplitude = learn_field(
-    gray_values0=gv0, gray_values1=gv1, measurements=measurements, decay=decay, factor=factor, **settings)
+    gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
 
 print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nonlin = {nonlin:.4f} ({settings['nonlinearity']})")
 

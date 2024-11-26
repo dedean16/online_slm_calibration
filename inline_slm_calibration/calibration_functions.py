@@ -123,8 +123,6 @@ def learn_field(
         gray_values0: np.array,
         gray_values1: np.array,
         measurements: np.array,
-        decay,
-        factor,
         nonlinearity: float = 1.0,
         iterations: int = 50,
         do_plot: bool = False,
@@ -159,6 +157,8 @@ def learn_field(
     measurements = measurements / measurements.std()                                # Normalize by std
 
     received_energy = np.cumsum(measurements / measurements.abs().mean())           # Received energy causing bleaching
+    decay = torch.tensor(0.0, requires_grad=True)
+    factor = torch.tensor(1.0, requires_grad=True)
 
     # Initial guess:
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
@@ -171,7 +171,8 @@ def learn_field(
     # Initialize parameters and optimizer
     params = [
         {"lr": learning_rate, "params": [E, a, b, P_bg]},
-        {"lr": learning_rate * 0.1, "params": [nonlinearity]}
+        {"lr": learning_rate * 0.1, "params": [nonlinearity]},
+        {"lr": learning_rate * 0.0001, "params": [decay, factor]},
     ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
