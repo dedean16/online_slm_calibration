@@ -39,7 +39,8 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     ]
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
 
-    plt.figure(figsize=(15, 5))
+    if do_plot:
+        plt.figure(figsize=(15, 5))
 
     for it in range(300):
         m_fit = photobleaching_fit()
@@ -79,7 +80,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
 
         plt.figure()
         plt.plot(m)
-        plt.show()
+        plt.pause(0.01)
 
     return measurements_compensated
 

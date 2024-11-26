@@ -7,6 +7,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude,
                               gray_values_ref, phase_ref, phase_ref_err, amplitude_ref, amplitude_ref_err):
     lightC0 = '#a8d3f0'
 
+    # Plot calibration curves of phase and amplitude
     plt.figure(figsize=(9, 5))
     plt.subplots_adjust(left=0.1, right=0.95, hspace=0.35, wspace=0.35, top=0.92, bottom=0.12)
 
@@ -30,12 +31,23 @@ def plot_results_ground_truth(gray_values, phase, amplitude,
     plt.title('b. Normalized amplitude response')
     plt.legend()
 
+    # Phase difference
     plt.figure()
     plt.subplots_adjust(left=0.2, right=0.95, top=0.9, bottom=0.15)
     plt.plot(np.diff(phase_ref))
     plt.title('Phase response slope')
     plt.xlabel('Gray level')
     plt.ylabel('$d\\phi/dg$')
+
+    # Plot field response in complex plane
+    plt.figure()
+    amplitude_norm = amplitude / amplitude.mean()
+    E_norm = amplitude_norm * np.exp(1.0j * phase)
+    amplitude_ref_norm = amplitude_ref / amplitude_ref.mean()
+    E_ref_norm = amplitude_ref_norm * np.exp(1.0j * phase_ref)
+    plt.plot(E_ref_norm.real, E_ref_norm.imag, label="Reference")
+    plt.plot(E_norm.real, E_norm.imag, label="Our method")
+    plt.legend()
 
     plt.show()
 

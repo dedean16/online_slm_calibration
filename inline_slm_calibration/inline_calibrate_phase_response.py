@@ -17,7 +17,7 @@ ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz") 
 
 settings = {
     "do_plot": False,
-    "do_end_plot": False,
+    "do_end_plot": True,
     "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
@@ -47,19 +47,3 @@ if settings['do_end_plot']:
     # -> leave out index 255 from plot
     plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1],
                               ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std)
-
-    plt.figure()
-    amplitude_norm = amplitude / amplitude.mean()
-    Er = amplitude_norm * np.exp(1.0j * phase)
-    ref_amplitude_norm = ref_amplitude / ref_amplitude.mean()
-    E_ref = ref_amplitude_norm * np.exp(1.0j * ref_phase)
-    plt.plot(E_ref.real, E_ref.imag, label="Reference")
-    plt.plot(Er.real, Er.imag, label="Predicted")
-    plt.legend()
-
-    plt.figure()
-    plt.plot(np.angle(E_ref.conj() * Er[:-1].numpy()))
-    plt.title('Phase difference Ref-Pred')
-    plt.xlabel('Gray value')
-    plt.ylabel('$\\Delta\\phi$ (rad)')
-    plt.show()
