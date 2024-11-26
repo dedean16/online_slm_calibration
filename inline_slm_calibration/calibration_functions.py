@@ -1,9 +1,8 @@
 # External 3rd party
-from typing import Tuple
-
 import torch
 from torch import Tensor as tt
 import numpy as np
+from numpy import ndarray as nd
 import torch
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -115,45 +114,41 @@ def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonl
     return I_excite.pow(nonlinearity) + P_bg
 
 
-
 def learn_field(
-    *,
-    gray_values0,
-    gray_values1,
-    measurements,
-    nonlinearity=1,
+    gray_values0: np.array,
+    gray_values1: np.array,
+    measurements: np.array,
+    nonlinearity: float = 1.0,
     iterations: int = 50,
     do_plot: bool = False,
     do_end_plot: bool = False,
     plot_per_its: int = 10,
-    learning_rate=0.1,
-) -> tuple[float, float, np.array, np.ndarray]:
+    learning_rate: float = 0.1,
+) -> tuple[float, float, float, float, nd, nd]:
     """
-    Learn the phase lookup table from dual phase stepping measurements.
+    Learn the field response from dual gray value measurements.
+
     This function uses the signal_model:
+    signal_power = |a⋅E(g_A) + b⋅E(g_B)|^(2N) + P_bg
 
-        I[i,j] = |a * E[i] + b * E[j]|^(non_linearity)
-
-    It learns lr_ratio, a and all complex numbers E[i] for each gray value i.
+    For details, please see the signal_model function docstring.
 
     Args:
-        gray_values0:
-        gray_values1: Same as gray_values1, for the second group.
-        measurements:
-        nonlinearity: Nonlinearity number. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
+        gray_values0: Contains gray values of group A, corresponding to dim 0 of feedback.
+        gray_values1: Contains gray values of group B, corresponding to dim 1 of feedback.
+        measurements: Signal measurements as 2D array. Indices correspond to gray_values0 and gray_values1.
+        nonlinearity: Expected nonlinearity coefficient. 1 = linear, 2 = 2PEF, 3 = 3PEF, etc., 0 = detector is broken :)
         iterations: Number of learning iterations.
         do_plot: If True, plot during learning.
+        do_end_plot: If True, plot after learning.
         plot_per_its: Plot per this many learning iterations.
-        init_noise_level: Standard deviation of the Gaussian noise added to the initial phase_response guess.
-        sigma: Standard deviation of gaussian kernel for computing smoothness score.
-        smooth_loss_factor: Factor for multiplying smoothness loss.
+        learning_rate: Learning rate of the optimizer.
 
     Returns:
-        nonlinearity, lr, phase[i], amplitude[i]
+       nonlinearity, a, b, P_bg, phase, amplitude
     """
-
     measurements = torch.tensor(measurements, dtype=torch.float32)
-    measurements = measurements / measurements.std()                # Normalize by std
+    measurements = measurements / measurements.std()                                # Normalize by std
 
     # Initial guess:
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
@@ -171,6 +166,7 @@ def learn_field(
     optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
     progress_bar = tqdm(total=iterations)
 
+    # Gradient descent loop
     for it in range(iterations):
         feedback_predicted = signal_model(gray_values0, gray_values1, E, a, b, P_bg, nonlinearity)
         loss = (measurements - feedback_predicted).pow(2).mean()
@@ -180,6 +176,7 @@ def learn_field(
         optimizer.step()
         optimizer.zero_grad()
 
+        # Plot
         if do_plot and (it % plot_per_its == 0 or it == 0 or it == iterations - 1):
             if it == 0:
                 plt.figure(figsize=(13, 4))
@@ -193,11 +190,9 @@ def learn_field(
 
         progress_bar.update()
 
-    # split phase and amplitude, and unwrap phase
-    # Ed = (E - 0.5 * (E.real.max() + E.real.min()) - 0.5j * (E.imag.max() + E.imag.min())).detach()  # Center E around 0
-    Ed = E.detach()
-    amplitude = Ed.abs()
-    phase = np.unwrap(np.angle(Ed))
+    # Post-process
+    amplitude = E.detach().abs()
+    phase = np.unwrap(np.angle(E.detach()))
     phase *= np.sign(phase[-1] - phase[0])
     phase -= phase.mean()
 

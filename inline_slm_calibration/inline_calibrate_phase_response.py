@@ -34,7 +34,6 @@ settings = {
 gv0, gv1, measurements = import_inline_calibration(inline_file, settings['do_plot'])
 measurements = detrend(gv0, gv1, measurements, do_plot=settings['do_plot'])         # Compensate for photo-bleaching
 
-
 # === Import and process reference === #
 ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
     import_reference_calibrations(ref_glob, do_plot=settings['do_plot'])
