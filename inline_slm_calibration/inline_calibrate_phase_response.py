@@ -1,6 +1,12 @@
-import numpy as np
+"""
+Process and plot inline calibration measurements. Compare with reference method that uses a Twymann-Green interferometer
+with Fourier fringe analysis. Before running this script, please ensure that data_folder (defined in directories.py)
+points to a valid folder and contains the measurement data files specified in the settings of this script.
+"""
+# External
 import matplotlib.pyplot as plt
 
+# Internal
 from calibration_functions import learn_field, detrend
 from directories import data_folder
 from plot_utilities import plot_results_ground_truth
@@ -11,12 +17,12 @@ plt.rcParams.update({'font.size': 14})
 
 
 # === Settings === #
-# Paths/globs to measurement files
-inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.npz")
-ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")  # Reference
+# Paths/globs to measurement data files
+inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.npz") # Our inline method
+ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")     # Reference TG fringe
 
 settings = {
-    "do_plot": False,
+    "do_plot": True,
     "do_end_plot": True,
     "plot_per_its": 300,
     "nonlinearity": 2.0,
