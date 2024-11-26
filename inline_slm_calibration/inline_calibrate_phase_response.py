@@ -56,6 +56,14 @@ ref_phase = np.median(ref_phase_all, axis=0)
 ref_phase -= ref_phase.mean()
 ref_phase_std = np.std(ref_phase_all, axis=0)
 
+#########
+Er = ref_amplitude * np.exp(1j * ref_phase)
+Erc = (Er - 0.5 * (Er.real.max() + Er.real.min()) - 0.5j * (Er.imag.max() + Er.imag.min()))  # Center E around 0
+ref_amplitude = abs(Erc)
+ref_phase = np.unwrap(np.angle(Erc))
+ref_phase -= ref_phase.mean()
+#########
+
 # plt.plot(np.abs(ref_field_all).T)
 plt.figure()
 plt.plot(np.asarray(ref_phase_all).T)
@@ -88,15 +96,15 @@ plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1],
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()
-E = amplitude_norm * np.exp(1.0j * phase)
+Er = amplitude_norm * np.exp(1.0j * phase)
 ref_amplitude_norm = ref_amplitude / ref_amplitude.mean()
 E_ref = ref_amplitude_norm * np.exp(1.0j * ref_phase)
 plt.plot(E_ref.real, E_ref.imag, label="Reference")
-plt.plot(E.real, E.imag, label="Predicted")
+plt.plot(Er.real, Er.imag, label="Predicted")
 plt.legend()
 
 plt.figure()
-plt.plot(np.angle(E_ref.conj() * E[:-1].numpy()))
+plt.plot(np.angle(E_ref.conj() * Er[:-1].numpy()))
 plt.title('Phase difference Ref-Pred')
 plt.xlabel('Gray value')
 plt.ylabel('$\\Delta\\phi$ (rad)')
