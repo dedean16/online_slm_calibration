@@ -31,6 +31,13 @@ measurements = npz_data["frames"].mean(axis=(0, 1, 2)) - npz_data['dark_frame'].
 gv0 = npz_data['gray_values1'][0]
 gv1 = npz_data['gray_values2'][0]
 
+
+plt.hist(npz_data['dark_frame'].flatten(), bins=range(-100, 100))
+plt.title('Dark frame noise distribution')
+plt.xlabel('Signal')
+plt.ylabel('Counts')
+plt.show()
+
 # Compensate for photo-bleaching
 measurements = detrend(gv0, gv1, measurements)
 
