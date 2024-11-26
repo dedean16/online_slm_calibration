@@ -48,7 +48,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
 
         measurements_compensated = m_compensated.detach().numpy().reshape(measurements.shape, order='F')
 
-        if it % 10 == 0:
+        if it % 10 == 0 and do_plot:
             plt.clf()
             plt.subplot(1, 3, 1)
             plt.imshow(measurements_compensated, aspect='auto', interpolation='nearest')

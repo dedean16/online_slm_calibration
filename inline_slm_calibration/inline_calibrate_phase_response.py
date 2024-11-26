@@ -16,8 +16,8 @@ inline_file = data_folder.joinpath("inline/inline-slm-calibration_t1731676417.np
 ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz")  # Reference
 
 settings = {
-    "do_plot": True,
-    "do_end_plot": True,
+    "do_plot": False,
+    "do_end_plot": False,
     "plot_per_its": 300,
     "nonlinearity": 2.0,
     "learning_rate": 0.3,
@@ -26,7 +26,7 @@ settings = {
 
 # === Import and process inline measurement === #
 gv0, gv1, measurements = import_inline_calibration(inline_file, settings['do_plot'])
-measurements = detrend(gv0, gv1, measurements)          # Compensate for photo-bleaching
+measurements = detrend(gv0, gv1, measurements, do_plot=settings['do_plot'])         # Compensate for photo-bleaching
 
 
 # === Import and process reference === #
