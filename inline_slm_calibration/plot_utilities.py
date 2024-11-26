@@ -3,13 +3,15 @@ import torch
 from matplotlib import pyplot as plt
 
 
-def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, phase_ref, phase_ref_err, amplitude_ref):
+def plot_results_ground_truth(gray_values, phase, amplitude,
+                              gray_values_ref, phase_ref, phase_ref_err, amplitude_ref, amplitude_ref_err):
+    lightC0 = '#a8d3f0'
 
     plt.figure(figsize=(9, 5))
     plt.subplots_adjust(left=0.1, right=0.95, hspace=0.35, wspace=0.35, top=0.92, bottom=0.12)
 
     plt.subplot(1, 2, 1)
-    plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', label='Reference')      # plot phase with std error
+    plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', ecolor=lightC0, label='Reference')
     plt.plot(gray_values, phase, '+', color='C1', label='Inline (ours)')
     plt.xlabel('Gray value')
     plt.ylabel('Phase')
@@ -18,9 +20,10 @@ def plot_results_ground_truth(gray_values, phase, amplitude, gray_values_ref, ph
 
     plt.subplot(1, 2, 2)
     rel_amplitude_ref = amplitude_ref / amplitude_ref.mean()
+    rel_amplitude_ref_err = amplitude_ref_err / amplitude_ref.mean()
     rel_amplitude = amplitude / amplitude.mean()
+    plt.errorbar(gray_values_ref, rel_amplitude_ref, yerr=rel_amplitude_ref_err, color='C0', ecolor=lightC0, label='Reference')
     plt.plot(gray_values, rel_amplitude, '+', color='C1', label='Inline (ours)')
-    plt.plot(rel_amplitude_ref, color='C0', label='Reference')
     plt.xlabel('Gray value')
     plt.ylabel('Normalized amplitude')
     plt.ylim((0, 1.1 * np.maximum(rel_amplitude.max(), rel_amplitude_ref.max())))

@@ -51,6 +51,7 @@ for n_f, filepath in enumerate(ref_files):
 
 ref_gray = ref_gray_all[0]
 ref_amplitude = np.median(ref_amp_all, axis=0)
+ref_amplitude_std = np.std(ref_amp_all, axis=0)
 ref_phase = np.median(ref_phase_all, axis=0)
 ref_phase -= ref_phase.mean()
 ref_phase_std = np.std(ref_phase_all, axis=0)
@@ -62,6 +63,13 @@ plt.xlabel('Gray value')
 plt.ylabel('Phase')
 plt.title('TG fringe calibration, unwrapped\ncompensated for sign and offset')
 plt.pause(0.01)
+
+plt.figure()
+plt.plot(np.asarray(ref_amp_all).T)
+plt.xlabel('Gray value')
+plt.ylabel('Amp')
+plt.title('TG fringe calibration, unwrapped\ncompensated for sign and offset')
+plt.show()
 
 
 # Learn phase response
@@ -75,7 +83,8 @@ phase -= phase.mean()
 
 # Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
 # -> leave out index 255 from plot
-plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1], ref_gray, ref_phase, ref_phase_std, ref_amplitude)
+plot_results_ground_truth(gv0[:-1], phase[:-1], amplitude[:-1],
+                          ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std)
 
 plt.figure()
 amplitude_norm = amplitude / amplitude.mean()
