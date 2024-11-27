@@ -66,10 +66,10 @@ inline_amplitude_std_per_measurement = np.std(inline_amp_all, axis=1)
 inline_phase = np.median(inline_phase_all, axis=0)
 inline_phase -= inline_phase.mean()
 inline_phase_std = np.std(inline_phase_all, axis=0)
-inline_phase_std_per_measurement = np.std(inline_phase_all, axis=1)
 
 print([f'{amp_std:.2g}' for amp_std in inline_amplitude_std_per_measurement])
-print([f'{phi_std:.2g}' for phi_std in inline_phase_std_per_measurement])
+n_max = np.argmax(inline_amplitude_std_per_measurement)
+print(f'σ_A={inline_amplitude_std_per_measurement[n_max]:.2g} for {inline_files[n_max]}')
 
 if settings['do_end_plot']:
     # Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
