@@ -30,7 +30,7 @@ settings = {
 }
 
 # === Import and process reference === #
-ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
+ref_gray, ref_phase, ref_phase_std, ref_amplitude_norm, ref_amplitude_norm_std = \
     import_reference_calibrations(ref_glob, do_plot=settings['do_plot'])
 
 # Initialize
@@ -38,6 +38,7 @@ inline_files = list(inline_glob)
 inline_gray_all = [None] * len(inline_files)
 inline_phase_all = [None] * len(inline_files)
 inline_amp_all = [None] * len(inline_files)
+inline_amp_norm_all = [None] * len(inline_files)
 nonlin_all = [None] * len(inline_files)
 
 # Process files
@@ -47,7 +48,7 @@ for n_f, filepath in enumerate(inline_files):
     measurements = detrend(gv0, gv1, measurements, do_plot=settings['do_plot'])         # Compensate for photo-bleaching
 
     # Learn phase response
-    nonlin, a, b, P_bg, phase, amplitude = learn_field(
+    nonlin, a, b, P_bg, phase, amplitude, amplitude_norm = learn_field(
         gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
 
     print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nonlin = {nonlin:.4f} ({settings['nonlinearity']})")
@@ -55,25 +56,26 @@ for n_f, filepath in enumerate(inline_files):
     # Store results in array
     inline_gray_all[n_f] = gv0
     inline_amp_all[n_f] = amplitude
+    inline_amp_norm_all[n_f] = amplitude_norm
     inline_phase_all[n_f] = phase
     nonlin_all[n_f] = nonlin
 
 # Summarize results with median and std
 inline_gray = inline_gray_all[0]
-inline_amplitude = np.median(inline_amp_all, axis=0)
-inline_amplitude_std = np.std(inline_amp_all, axis=0)
-inline_amplitude_std_per_measurement = np.std(inline_amp_all, axis=1)
+inline_amplitude_norm = np.median(inline_amp_norm_all, axis=0)
+inline_amplitude_norm_std = np.std(inline_amp_norm_all, axis=0)
+inline_amplitude_norm_std_per_measurement = np.std(inline_amp_norm_all, axis=1)
 inline_phase = np.median(inline_phase_all, axis=0)
 inline_phase -= inline_phase.mean()
 inline_phase_std = np.std(inline_phase_all, axis=0)
 
-print([f'{amp_std:.2g}' for amp_std in inline_amplitude_std_per_measurement])
-n_max = np.argmax(inline_amplitude_std_per_measurement)
-print(f'σ_A={inline_amplitude_std_per_measurement[n_max]:.2g} for {inline_files[n_max]}')
+print([f'{amp_std:.2g}' for amp_std in inline_amplitude_norm_std_per_measurement])
+n_max = np.argmax(inline_amplitude_norm_std_per_measurement)
+print(f'σ_A={inline_amplitude_norm_std_per_measurement[n_max]:.2g} for {inline_files[n_max]}')
 
 if settings['do_end_plot']:
     # Note: during the last TG fringe measurement, gray values [0, 254] were measured (instead of [0, 255])
     # -> leave out index 255 from plot
     plot_results_ground_truth(
-        inline_gray[:-1], inline_phase[:-1], inline_phase_std[:-1], inline_amplitude[:-1], inline_amplitude_std[:-1],
-        ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std)
+        inline_gray[:-1], inline_phase[:-1], inline_phase_std[:-1], inline_amplitude_norm[:-1], inline_amplitude_norm_std[:-1],
+        ref_gray, ref_phase, ref_phase_std, ref_amplitude_norm, ref_amplitude_norm_std)

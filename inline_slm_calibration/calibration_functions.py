@@ -124,7 +124,7 @@ def learn_field(
     do_end_plot: bool = False,
     plot_per_its: int = 10,
     learning_rate: float = 0.1,
-) -> tuple[float, float, float, float, nd, nd]:
+) -> tuple[float, float, float, float, nd, nd, nd]:
     """
     Learn the field response from dual gray value measurements.
 
@@ -151,6 +151,7 @@ def learn_field(
     measurements = measurements / measurements.std()                                # Normalize by std
 
     # Initial guess:
+    torch.manual_seed(42)
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
     E.requires_grad_(True)
     a = torch.tensor(1.0, requires_grad=True, dtype=torch.complex64)           # Group A complex pre-factor
@@ -192,6 +193,7 @@ def learn_field(
 
     # Post-process
     amplitude = E.detach().abs()
+    amplitude_norm = amplitude / amplitude.mean()
     phase = np.unwrap(np.angle(E.detach()))
     phase *= np.sign(phase[-1] - phase[0])
     phase -= phase.mean()
@@ -201,5 +203,5 @@ def learn_field(
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
         plot_result_feedback_fit(measurements, feedback_predicted, gray_values0, gray_values1)
 
-    return nonlinearity.item(), a.item(), b.item(), P_bg.item(), phase, amplitude.detach()
+    return nonlinearity.item(), a.item(), b.item(), P_bg.item(), phase, amplitude, amplitude_norm
 

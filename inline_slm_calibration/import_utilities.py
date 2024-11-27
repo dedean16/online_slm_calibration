@@ -37,7 +37,8 @@ def import_reference_calibrations(ref_glob, do_plot=False, do_remove_bias=False)
     # Note: take median as it is robust against outliers. Use std to represent repeatability
     ref_gray = ref_gray_all[0]
     ref_amplitude = np.median(ref_amp_all, axis=0)
-    ref_amplitude_std = np.std(ref_amp_all, axis=0)
+    ref_amplitude_norm = ref_amplitude / ref_amplitude.mean()
+    ref_amplitude_norm_std = np.std(ref_amp_all, axis=0)
     ref_phase = np.median(ref_phase_all, axis=0)
     ref_phase -= ref_phase.mean()
     ref_phase_std = np.std(ref_phase_all, axis=0)
@@ -69,7 +70,7 @@ def import_reference_calibrations(ref_glob, do_plot=False, do_remove_bias=False)
         plt.title('TG fringe calibration, unwrapped\ncompensated for sign and offset')
         plt.show()
 
-    return ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std
+    return ref_gray, ref_phase, ref_phase_std, ref_amplitude_norm, ref_amplitude_norm_std
 
 
 def import_inline_calibration(inline_file, do_plot=False):
