@@ -94,6 +94,7 @@ def import_inline_calibration(inline_file, do_plot=False):
     gv1 = npz_data['gray_values2'][0]
 
     if do_plot:
+        plt.figure()
         plt.hist(npz_data['dark_frame'].flatten(), bins=range(-100, 100))
         plt.title('Dark frame noise distribution')
         plt.xlabel('Signal')
