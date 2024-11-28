@@ -20,7 +20,7 @@ ref_glob = data_folder.glob("tg_fringe/tg-fringe-slm-calibration-r*_noraw.npz") 
 
 plt.rcParams.update({'font.size': 14})
 settings = {
-    "do_plot": True,
+    "do_plot": False,
     "do_end_plot": True,
     "plot_per_its": 500,
     "nonlinearity": 2.0,

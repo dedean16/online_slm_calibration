@@ -19,7 +19,7 @@ def photobleaching_model(factor, decay, t):
 
 
 def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
-    m = torch.tensor(measurements.flatten(order="F"))
+    m = torch.tensor(measurements).t().contiguous().view(-1) # flatten("F")
     m = m / m.abs().mean()
 
     gv0 = np.asarray(gray_value0)
@@ -30,7 +30,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     # Initial values
     factor = torch.tensor(0.1 * (m.max() - m.min()), dtype=torch.float32, requires_grad=True)
     decay = torch.tensor(0.1 / len(m), dtype=torch.float32, requires_grad=True)
-    t = np.cumsum(m)
+    t = np.cumsum(torch.maximum(m,torch.tensor(0.0)))
 
     def take_diag(M):
         return M.reshape((measurements.shape[1], measurements.shape[0]))[:, sym_selection].diagonal()
@@ -44,7 +44,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     if do_plot:
         plt.figure(figsize=(15, 5))
 
-    for it in range(300):
+    for it in range(500):
         m_fit = photobleaching_model(factor, decay, t)
         m_compensated = m / m_fit
         loss = (take_diag(m) - take_diag(m_fit)).pow(2).mean()
@@ -55,7 +55,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
             plt.clf()
             plt.subplot(1, 3, 1)
             plt.imshow(measurements_compensated, aspect='auto', interpolation='nearest')
-            plt.title(f'Offset={factor.detach():.3f}, decay={decay.detach():.3g}')
+            plt.title(f'Scale={factor.detach():.3f}, decay={decay.detach():.3g}')
 
             plt.subplot(1, 3, 2)
             plt.plot(take_diag(m).detach())
@@ -87,7 +87,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
         plt.xlabel('Index')
         plt.pause(0.01)
 
-    return decay, factor
+    return decay, factor, t
 
 
 def signal_model(gray_values0, gray_values1, E: tt, a: tt, b: tt, P_bg: tt, nonlinearity: tt, decay: tt,
@@ -155,10 +155,7 @@ def learn_field(
     """
     measurements = torch.tensor(measurements, dtype=torch.float32)
     measurements = measurements / measurements.std()                                # Normalize by std
-
-    received_energy = np.cumsum(measurements / measurements.abs().mean())           # Received energy causing bleaching
-    decay = torch.tensor(0.0, requires_grad=True)
-    factor = torch.tensor(1.0, requires_grad=True)
+    decay, factor, received_energy = detrend(gray_values0, gray_values1, measurements, do_plot)
 
     # Initial guess:
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
@@ -172,9 +169,8 @@ def learn_field(
     params = [
         {"lr": learning_rate, "params": [E, a, b, P_bg]},
         {"lr": learning_rate * 0.1, "params": [nonlinearity]},
-        {"lr": learning_rate * 0.0001, "params": [decay, factor]},
     ]
-    optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True, betas=(0.95, 0.9995))
+    optimizer = torch.optim.Adam(params, lr=learning_rate, amsgrad=True)
     progress_bar = tqdm(total=iterations)
 
     # Gradient descent loop

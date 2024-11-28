@@ -12,6 +12,10 @@ def plot_results_ground_truth(gray_values, phase, amplitude,
     plt.subplots_adjust(left=0.1, right=0.95, hspace=0.35, wspace=0.35, top=0.92, bottom=0.12)
 
     plt.subplot(1, 2, 1)
+    phase_ref -= phase_ref[0]
+    phase_diff = np.interp(gray_values_ref, gray_values, phase) - phase_ref
+    phase -= phase_diff.mean()
+
     plt.errorbar(gray_values_ref, phase_ref, yerr=phase_ref_err, color='C0', ecolor=lightC0, label='Reference')
     plt.plot(gray_values, phase, '+', color='C1', label='Inline (ours)')
     plt.xlabel('Gray value')
@@ -23,6 +27,7 @@ def plot_results_ground_truth(gray_values, phase, amplitude,
     rel_amplitude_ref = amplitude_ref / amplitude_ref.mean()
     rel_amplitude_ref_err = amplitude_ref_err / amplitude_ref.mean()
     rel_amplitude = amplitude / amplitude.mean()
+
     plt.errorbar(gray_values_ref, rel_amplitude_ref, yerr=rel_amplitude_ref_err, color='C0', ecolor=lightC0, label='Reference')
     plt.plot(gray_values, rel_amplitude, '+', color='C1', label='Inline (ours)')
     plt.xlabel('Gray value')
