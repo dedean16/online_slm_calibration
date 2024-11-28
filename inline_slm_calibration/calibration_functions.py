@@ -204,7 +204,7 @@ def learn_field(
     phase *= np.sign(phase[-1] - phase[0])
     phase -= phase.mean()
 
-    if do_plot and do_end_plot:
+    if do_plot or do_end_plot:
         plt.figure(figsize=(14, 4.3))
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
         plot_result_feedback_fit(measurements, predicted_signal, gray_values0, gray_values1)
