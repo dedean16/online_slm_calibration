@@ -2,6 +2,7 @@
 Utilities for importing calibrations.
 """
 import numpy as np
+from numpy import ndarray as nd
 import matplotlib.pyplot as plt
 
 
@@ -73,7 +74,7 @@ def import_reference_calibrations(ref_glob, do_plot=False, do_remove_bias=False)
     return ref_gray, ref_phase, ref_phase_std, ref_amplitude_norm, ref_amplitude_norm_std
 
 
-def import_inline_calibration(inline_file, do_plot=False):
+def import_inline_calibration(inline_file, do_noise_plot=False) -> tuple[nd, nd, nd, nd]:
     """
     Import an inline calibration.
 
@@ -94,7 +95,10 @@ def import_inline_calibration(inline_file, do_plot=False):
     gv0 = npz_data['gray_values1'][0]
     gv1 = npz_data['gray_values2'][0]
 
-    if do_plot:
+    # Gather statistical data from the frames for noise analysis
+    measurement_variances = npz_data["frames"].var(axis=(0, 1, 2))
+
+    if do_noise_plot:
         plt.figure()
         plt.hist(npz_data['dark_frame'].flatten(), bins=range(-100, 100))
         plt.title('Dark frame noise distribution')
@@ -102,4 +106,4 @@ def import_inline_calibration(inline_file, do_plot=False):
         plt.ylabel('Counts')
         plt.pause(0.01)
 
-    return gv0, gv1, measurements
+    return gv0, gv1, measurements, measurement_variances

@@ -122,6 +122,7 @@ def learn_field(
     iterations: int = 50,
     do_plot: bool = False,
     do_end_plot: bool = False,
+    do_noise_plot: bool = False,
     plot_per_its: int = 10,
     learning_rate: float = 0.1,
 ) -> tuple[float, float, float, float, nd, nd, nd]:
