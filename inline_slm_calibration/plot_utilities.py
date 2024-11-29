@@ -81,7 +81,7 @@ def plot_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values
     plt.colorbar()
 
 
-def plot_result_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1):
+def plot_result_feedback_fit(feedback_measurements, feedback, gray_values0, gray_values1, weights):
     extent = (gray_values1.min()-0.5, gray_values1.max()+0.5, gray_values0.max()+0.5, gray_values0.min()-0.5)
     vmin = torch.minimum(feedback_measurements.min(), feedback.min())
     vmax = torch.maximum(feedback_measurements.max(), feedback.max())
@@ -100,9 +100,10 @@ def plot_result_feedback_fit(feedback_measurements, feedback, gray_values0, gray
     plt.ylabel('$g_A$')
     plt.colorbar()
 
+    weighted_residual = ((feedback_measurements- feedback) * weights).detach()
     plt.subplot(1, 3, 3)
-    plt.imshow((feedback_measurements.detach() - feedback.detach()).abs(), extent=extent, interpolation="nearest")
-    plt.title("c. Residual")
+    plt.imshow(weighted_residual, extent=extent, interpolation="nearest")
+    plt.title("c. Weighted residual")
     plt.xlabel('$g_B$')
     plt.ylabel('$g_A$')
     plt.colorbar()

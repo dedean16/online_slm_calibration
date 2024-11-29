@@ -29,7 +29,7 @@ settings = {
 }
 
 # === Import and process inline measurement === #
-gv0, gv1, measurements = import_inline_calibration(inline_file, settings['do_plot'])
+gv0, gv1, measurements, weights = import_inline_calibration(inline_file, settings['do_plot'])
 
 # === Import and process reference === #
 ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
@@ -37,7 +37,7 @@ ref_gray, ref_phase, ref_phase_std, ref_amplitude, ref_amplitude_std = \
 
 # Learn phase response
 nonlin, a, b, P_bg, phase, amplitude = learn_field(
-    gray_values0=gv0, gray_values1=gv1, measurements=measurements, **settings)
+    gray_values0=gv0, gray_values1=gv1, measurements=measurements, weights=weights, **settings)
 
 print(f"a={a:.4f} (1.0), b={b:.4f}, P_bg={P_bg:.4f}, nonlin = {nonlin:.4f} ({settings['nonlinearity']})")
 

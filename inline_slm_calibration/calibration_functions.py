@@ -18,8 +18,9 @@ def photobleaching_model(factor, decay, t):
     return factor * torch.exp(-decay * t)
 
 
-def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
+def detrend(gray_value0, gray_value1, measurements: np.ndarray, weights = 1.0, do_plot=False):
     m = torch.tensor(measurements).t().contiguous().view(-1) # flatten("F")
+    w = torch.tensor(weights).t().contiguous().view(-1)
     m = m / m.abs().mean()
 
     gv0 = np.asarray(gray_value0)
@@ -47,7 +48,7 @@ def detrend(gray_value0, gray_value1, measurements: np.ndarray, do_plot=False):
     for it in range(500):
         m_fit = photobleaching_model(factor, decay, t)
         m_compensated = m / m_fit
-        loss = (take_diag(m) - take_diag(m_fit)).pow(2).mean()
+        loss = ((take_diag(m) - take_diag(m_fit)) * weights).pow(2).mean()
 
         measurements_compensated = m_compensated.detach().numpy().reshape(measurements.shape, order='F')
 
@@ -123,6 +124,7 @@ def learn_field(
         gray_values0: np.array,
         gray_values1: np.array,
         measurements: np.array,
+        weights = 1.0,
         nonlinearity: float = 1.0,
         iterations: int = 50,
         do_plot: bool = False,
@@ -155,7 +157,7 @@ def learn_field(
     """
     measurements = torch.tensor(measurements, dtype=torch.float32)
     measurements = measurements / measurements.std()                                # Normalize by std
-    decay, factor, received_energy = detrend(gray_values0, gray_values1, measurements, do_plot)
+    decay, factor, received_energy = detrend(gray_values0, gray_values1, measurements, weights, do_plot)
 
     # Initial guess:
     E = torch.exp(2j * np.pi * torch.rand(256))                                     # Field response
@@ -177,7 +179,7 @@ def learn_field(
     for it in range(iterations):
         predicted_signal = signal_model(
             gray_values0, gray_values1, E, a, b, P_bg, nonlinearity, decay, factor, received_energy)
-        loss = (measurements - predicted_signal).pow(2).mean()
+        loss = ((measurements - predicted_signal) * weights).pow(2).mean()
 
         # Gradient descent step
         loss.backward()
@@ -207,7 +209,7 @@ def learn_field(
     if do_plot or do_end_plot:
         plt.figure(figsize=(14, 4.3))
         plt.subplots_adjust(left=0.05, right=0.98, bottom=0.15)
-        plot_result_feedback_fit(measurements, predicted_signal, gray_values0, gray_values1)
+        plot_result_feedback_fit(measurements, predicted_signal, gray_values0, gray_values1, weights)
 
     return nonlinearity.item(), a.item(), b.item(), P_bg.item(), phase, amplitude.detach()
 
